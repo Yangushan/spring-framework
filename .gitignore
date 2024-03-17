@@ -29,6 +29,7 @@ buildSrc/build
 /src/asciidoc/build
 target/
 /target/
+/yangushan-test/build
 
 # Eclipse artifacts, including WTP generated manifests
 .classpath
