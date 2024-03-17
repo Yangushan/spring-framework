@@ -466,6 +466,7 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 		if (className == null) {
 			return null;
 		}
+		// 通过className和classLoader去加载class
 		Class<?> resolvedClass = ClassUtils.forName(className, classLoader);
 		this.beanClass = resolvedClass;
 		return resolvedClass;

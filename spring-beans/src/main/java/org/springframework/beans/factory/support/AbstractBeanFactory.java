@@ -250,8 +250,11 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			String name, @Nullable Class<T> requiredType, @Nullable Object[] args, boolean typeCheckOnly)
 			throws BeansException {
 
-		// 这里会对beanName进行处理，如果进来的是一个&beanName，那么就说明想要一个FactoryBean原始的对象，则会把&去掉直接拿数据
-		// 如果是普通beanName就直接返回
+		/**
+		 * 1. 这里会对beanName进行处理，如果进来的是一个&beanName，
+		 * 		那么就说明想要一个FactoryBean原始的对象，则会把&去掉直接拿数据,如果是普通beanName就直接返回
+		 * 2. 有可能Name是别名，如果是别名要找到对应真正的beanName
+		 */
 		String beanName = transformedBeanName(name);
 		Object beanInstance;
 
@@ -281,6 +284,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 			// Check if bean definition exists in this factory.
 			BeanFactory parentBeanFactory = getParentBeanFactory();
+			// 判断当前的beanFactory里面是否包含了这个beanName如果不包含且存在父级别的BeanFactory，则去父类容器里面拿数据
 			if (parentBeanFactory != null && !containsBeanDefinition(beanName)) {
 				// Not found -> check parent.
 				String nameToLookup = originalBeanName(name);
@@ -311,19 +315,27 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				if (requiredType != null) {
 					beanCreation.tag("beanType", requiredType::toString);
 				}
+				// 获取到合并的BeanDefinition（合并也就是需要从父类copy一些属性到子类）
 				RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
+
+				// 判断BeanDefinition里面的属性abstract是否是true
 				checkMergedBeanDefinition(mbd, beanName, args);
 
 				// Guarantee initialization of beans that the current bean depends on.
+				// 处理dependsOn的逻辑，需要先判断dependsOn的哪些bean对象是否已经创建了，他们必须先创建
 				String[] dependsOn = mbd.getDependsOn();
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
+						// isDependent的意思是，假如我的A对象上加入了注解dependsOn B
+						// 这里的逻辑就是去判断b是否也dependsOn A,如果是的话就形成了一个dependsOn的循环依赖，这种dependsOn形成的循环依赖无法解决，直接报错
 						if (isDependent(beanName, dep)) {
 							throw new BeanCreationException(mbd.getResourceDescription(), beanName,
 									"Circular depends-on relationship between '" + beanName + "' and '" + dep + "'");
 						}
+						// 如果没有循环依赖这要在map里面注册一下两者之间的依赖关系
 						registerDependentBean(dep, beanName);
 						try {
+							// 然后这里去获取bean dep也就是createBean流程，先创建dep依赖方
 							getBean(dep);
 						}
 						catch (NoSuchBeanDefinitionException ex) {
@@ -335,8 +347,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 				// Create bean instance.
 				if (mbd.isSingleton()) {
+					// 单例bean创建流程，注意这里使用了匿名内部类的lambda表达式，创建的时候就走的下面的createBean方法
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
+							// 创建bean
 							return createBean(beanName, mbd, args);
 						}
 						catch (BeansException ex) {
@@ -351,19 +365,27 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 
 				else if (mbd.isPrototype()) {
+					// 如果是原型，则每次get的时候都会调用createBean的逻辑
 					// It's a prototype -> create a new instance.
 					Object prototypeInstance = null;
 					try {
+						// 标记这个原型bean正在创建
 						beforePrototypeCreation(beanName);
 						prototypeInstance = createBean(beanName, mbd, args);
 					}
 					finally {
+						// 删除正常创建的标记
 						afterPrototypeCreation(beanName);
 					}
 					beanInstance = getObjectForBeanInstance(prototypeInstance, name, beanName, mbd);
 				}
 
 				else {
+					/**
+					 * 其他类型的scope，非单例非原型，可以看WebApplicationContext里面还有什么request, session等等类型，主要是在spring webmvc中使用
+					 * 这个时候scope就是表达的是request和session这种级别了，那么我们的bean就是在一个request之中或者在一个session中
+					 * 这样我们可以保证在一个request或者session中一个beanName拿到唯一的一个bean，缓存就是存放在他们对应的Attribute里面
+					 */
 					String scopeName = mbd.getScope();
 					if (!StringUtils.hasLength(scopeName)) {
 						throw new IllegalStateException("No scope name defined for bean '" + beanName + "'");
@@ -373,6 +395,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 						throw new IllegalStateException("No Scope registered for scope name '" + scopeName + "'");
 					}
 					try {
+						// 从scope里面拿，如果没有就调用下面的createBean创建之后存入Request/session的attribute里面
 						Object scopedInstance = scope.get(beanName, () -> {
 							beforePrototypeCreation(beanName);
 							try {
@@ -809,6 +832,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		this.beanClassLoader = (beanClassLoader != null ? beanClassLoader : ClassUtils.getDefaultClassLoader());
 	}
 
+	/**
+	 * 从ClassUtils.getDefaultClassLoader()获取
+	 * @return
+	 */
 	@Override
 	@Nullable
 	public ClassLoader getBeanClassLoader() {
@@ -1547,6 +1574,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			throws CannotLoadBeanClassException {
 
 		try {
+			// 这个属性如果是一个class对象则表达已经被加载了，就可以直接返回
 			if (mbd.hasBeanClass()) {
 				return mbd.getBeanClass();
 			}
@@ -1555,6 +1583,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 						() -> doResolveBeanClass(mbd, typesToMatch), getAccessControlContext());
 			}
 			else {
+				// 否则去加载这个Class
 				return doResolveBeanClass(mbd, typesToMatch);
 			}
 		}
@@ -1574,6 +1603,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	private Class<?> doResolveBeanClass(RootBeanDefinition mbd, Class<?>... typesToMatch)
 			throws ClassNotFoundException {
 
+		// 需要先获取我们当前一个合适的classLoader
 		ClassLoader beanClassLoader = getBeanClassLoader();
 		ClassLoader dynamicLoader = beanClassLoader;
 		boolean freshResolve = false;
@@ -1593,9 +1623,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 			}
 		}
-
+		// 获取className
 		String className = mbd.getBeanClassName();
 		if (className != null) {
+			// 解析spring表达式
 			Object evaluated = evaluateBeanDefinitionString(className, mbd);
 			if (!className.equals(evaluated)) {
 				// A dynamically resolved expression, supported as of 4.2...
@@ -1628,6 +1659,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		}
 
 		// Resolve regularly, caching the result in the BeanDefinition...
+		// 如果解析我们的BeanDefinition而加载class
 		return mbd.resolveBeanClass(beanClassLoader);
 	}
 
@@ -2147,12 +2179,24 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 */
 	static class BeanPostProcessorCache {
 
+		/**
+		 * 用来存放特殊的InstantiationAwareBeanPostProcessor列表，在这个列表的对象，spring在创建bean的时候会调用
+		 * 这个对象里面的postProcessBeforeInstantiation方法来判断是否使用自定义的new bean对象的方式。
+		 * 如果这个方法返回有数据，则spring会认为我们使用自定义的new bean的方式来创建对象，就不会再去使用class构造方法来帮我们New对象了
+		 */
 		final List<InstantiationAwareBeanPostProcessor> instantiationAware = new ArrayList<>();
 
 		final List<SmartInstantiationAwareBeanPostProcessor> smartInstantiationAware = new ArrayList<>();
 
 		final List<DestructionAwareBeanPostProcessor> destructionAware = new ArrayList<>();
 
+		/**
+		 * 用来存放MergedBeanDefinitionPostProcessor的BeanPostProcessor列表，在这个列表的对象，
+		 * 在Spring使用自己的方式new完了bean之后会调用里面的postProcessMergedBeanDefinition方法，
+		 * 这个方法可以拿到bean的BeanDefinition对象，也就是我们可以在这个方法里面对BeanDefinition进行一些属性的设置
+		 * 也就是当一个bean在实例化之后就会调用这个方法（属性填充和初始化前完成）
+		 *
+		 */
 		final List<MergedBeanDefinitionPostProcessor> mergedDefinition = new ArrayList<>();
 	}
 

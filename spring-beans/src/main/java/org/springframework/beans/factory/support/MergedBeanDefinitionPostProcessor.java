@@ -19,6 +19,16 @@ package org.springframework.beans.factory.support;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 
 /**
+ *
+ * MergedBeanDefinitionPostProcessor是当我们使用spring的new bean的流程中，在bean实例化之后就会立马调用的一个BeanPostProcessor，
+ * 这个流程会走在bean属性填充和初始化之前，
+ * 从下面的postProcessMergedBeanDefinition方法可以看到我们可以对BeanDefinition进行一些属性的设置，让他在初始化和属性填充之前生效，
+ * 由于这个时候bean已经new了，所以我们只有对一些少量的属性设置才能生效，一些已经在bean创建之前需要的属性这个时候设置已经没有任何用处了.
+ * <p></p>
+ * 比如：设置我们的initMethodName，设置我们的propertyValue，
+ * propertyValue的意思是可以提前给我们的一些属性赋值，有些属性可能设置了@Autowired等，但是如果我们提前在这里设置了，则在@Autowreid注入流程就会进行忽略
+ *
+ * <p>
  * Post-processor callback interface for <i>merged</i> bean definitions at runtime.
  * {@link BeanPostProcessor} implementations may implement this sub-interface in order
  * to post-process the merged bean definition (a processed copy of the original bean

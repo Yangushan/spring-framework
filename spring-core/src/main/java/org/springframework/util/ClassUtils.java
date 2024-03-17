@@ -195,16 +195,16 @@ public abstract class ClassUtils {
 	@Nullable
 	public static ClassLoader getDefaultClassLoader() {
 		ClassLoader cl = null;
-		try {
+		try { // 判断当前线程的classLoader
 			cl = Thread.currentThread().getContextClassLoader();
 		}
 		catch (Throwable ex) {
 			// Cannot access thread context ClassLoader - falling back...
 		}
-		if (cl == null) {
+		if (cl == null) { // 如果当前线程没有设置context classLoader
 			// No thread context class loader -> use class loader of this class.
-			cl = ClassUtils.class.getClassLoader();
-			if (cl == null) {
+			cl = ClassUtils.class.getClassLoader(); // 这使用这个类所在的classLoader
+			if (cl == null) { // 如果当前这个类所在的classLoader为空很可能是使用了BootstrapClassLoader，所以改为使用system也就是appClassLoader
 				// getClassLoader() returning null indicates the bootstrap ClassLoader
 				try {
 					cl = ClassLoader.getSystemClassLoader();

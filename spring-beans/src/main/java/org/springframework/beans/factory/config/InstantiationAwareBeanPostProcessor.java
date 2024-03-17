@@ -23,6 +23,15 @@ import org.springframework.beans.PropertyValues;
 import org.springframework.lang.Nullable;
 
 /**
+ *
+ * <p>
+ *     这个BeanPostProcessor，Spring在实例化bean的时候也就是new bean的时候，
+ *     会先判断系统中是否存在InstantiationAwareBeanPostProcessor，如果存在则循环调用里面的
+ *     postProcessBeforeInstantiation方法，判断是否使用自定义的方式去new一个bean，
+ *     如果返回不为null也就是我们使用自己定义的方式去new bean，那么spring就不会在通过推断构造方法的方式去new bean
+ *     尽管使用这种方式new的bean，spring也会依然走BeanPostProcessor的after方法去完成AOP流程
+ * </p>
+ *
  * Subinterface of {@link BeanPostProcessor} that adds a before-instantiation callback,
  * and a callback after instantiation but before explicit properties are set or
  * autowiring occurs.
@@ -42,9 +51,14 @@ import org.springframework.lang.Nullable;
  * @see org.springframework.aop.framework.autoproxy.AbstractAutoProxyCreator#setCustomTargetSourceCreators
  * @see org.springframework.aop.framework.autoproxy.target.LazyInitTargetSourceCreator
  */
-public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
+ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 
 	/**
+	 * 这个方法的作用就是通过这个方法，我们可以自定义我们bean的new方法，不使用spring默认的流程
+	 * 如果返回了一个具体的对象拿就表示使用我们自定义的这个new方法，所以是在create bean最前置的时候调用的
+	 * 如果调用了这个方法后续的spring很多流程都不一样，不过最后的AOP流程是一样的也会走beanPostProcessor的after方法
+	 * <p></p>
+	 *
 	 * Apply this BeanPostProcessor <i>before the target bean gets instantiated</i>.
 	 * The returned bean object may be a proxy to use instead of the target bean,
 	 * effectively suppressing default instantiation of the target bean.
@@ -74,6 +88,12 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 	}
 
 	/**
+	 * 这个方法的作用就是在实例化之后调用,
+	 * 也就是当一个对象被new实例化之后，在属性填充和初始化之前调用的一个流程；
+	 * 你可以在属性填充之前或者在初始化之前做一些操作去影响后续的一些流程,
+	 * 需要注意的是参数bean因为还没属性填充和初始化，所以里面很多东西都是空的
+	 * <p></p>
+	 *
 	 * Perform operations after the bean has been instantiated, via a constructor or factory method,
 	 * but before Spring property population (from explicit properties or autowiring) occurs.
 	 * <p>This is the ideal callback for performing custom field injection on the given bean
@@ -93,6 +113,9 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 	}
 
 	/**
+	 *
+	 *
+	 *
 	 * Post-process the given property values before the factory applies them
 	 * to the given bean, without any need for property descriptors.
 	 * <p>Implementations should return {@code null} (the default) if they provide a custom
