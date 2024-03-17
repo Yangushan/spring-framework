@@ -96,16 +96,21 @@ public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanReg
 	protected Object getObjectFromFactoryBean(FactoryBean<?> factory, String beanName, boolean shouldPostProcess) {
 		if (factory.isSingleton() && containsSingleton(beanName)) {
 			synchronized (getSingletonMutex()) {
+				// 从缓存拿
 				Object object = this.factoryBeanObjectCache.get(beanName);
+				// 缓存为空
 				if (object == null) {
+					// 调用FactoryBean的getObject方法拿到bean对象，存入缓存
 					object = doGetObjectFromFactoryBean(factory, beanName);
 					// Only post-process and store if not put there already during getObject() call above
 					// (e.g. because of circular reference processing triggered by custom getBean calls)
+					// 并发判断，所以这里再次判断一次，使用了double check
 					Object alreadyThere = this.factoryBeanObjectCache.get(beanName);
 					if (alreadyThere != null) {
 						object = alreadyThere;
 					}
 					else {
+						// shouldPostProcess表示这个bean可能是否正常，有可能不是正常的bean，并不需要这个流程，所以有这个判断
 						if (shouldPostProcess) {
 							if (isSingletonCurrentlyInCreation(beanName)) {
 								// Temporarily return non-post-processed object, not storing it yet..
@@ -113,6 +118,11 @@ public abstract class FactoryBeanRegistrySupport extends DefaultSingletonBeanReg
 							}
 							beforeSingletonCreation(beanName);
 							try {
+								/**
+								 * 执行BeanPostProcessor的applyBeanPostProcessorsAfterInitialization方法，为了AOP
+								 * <b>所以可以看到FactoryBean getObject创建的对象会执行applyBeanPostProcessorsAfterInitialization方法，但是却不会之前before方法</b>
+								 * 这和普通对象是有区别的，要注意使用
+								 */
 								object = postProcessObjectFromFactoryBean(object, beanName);
 							}
 							catch (Throwable ex) {

@@ -250,10 +250,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			String name, @Nullable Class<T> requiredType, @Nullable Object[] args, boolean typeCheckOnly)
 			throws BeansException {
 
+		// 这里会对beanName进行处理，如果进来的是一个&beanName，那么就说明想要一个FactoryBean原始的对象，则会把&去掉直接拿数据
+		// 如果是普通beanName就直接返回
 		String beanName = transformedBeanName(name);
 		Object beanInstance;
 
 		// Eagerly check singleton cache for manually registered singletons.
+		// 从单例池里面拿数据
 		Object sharedInstance = getSingleton(beanName);
 		if (sharedInstance != null && args == null) {
 			if (logger.isTraceEnabled()) {
@@ -265,6 +268,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					logger.trace("Returning cached instance of singleton bean '" + beanName + "'");
 				}
 			}
+			// 因为直接拿的bean对象不一定是真正需要的，比如像FactoryBean的对象一样，所以这里还需要进行一次判断
 			beanInstance = getObjectForBeanInstance(sharedInstance, name, beanName, null);
 		}
 
@@ -1155,6 +1159,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			return (beanInstance instanceof FactoryBean);
 		}
 		// No singleton instance found -> check bean definition.
+		// 如果当前的BeanFactory容器中不包含这个beanName，就是当前容器的父类容器中判断
 		if (!containsBeanDefinition(beanName) && getParentBeanFactory() instanceof ConfigurableBeanFactory) {
 			// No bean definition found in this factory -> delegate to parent.
 			return ((ConfigurableBeanFactory) getParentBeanFactory()).isFactoryBean(name);
@@ -1398,6 +1403,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 			if (mbd == null || mbd.stale) {
 				previous = mbd;
+				// 如果没有父类，则直接用当前的beanDefinition转化为root
 				if (bd.getParentName() == null) {
 					// Use copy of given root bean definition.
 					if (bd instanceof RootBeanDefinition) {
@@ -1408,11 +1414,12 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 					}
 				}
 				else {
+					// 如果有父类，
 					// Child bean definition: needs to be merged with parent.
-					BeanDefinition pbd;
+					BeanDefinition pbd; //存放父类的parentBeanDefinition
 					try {
 						String parentBeanName = transformedBeanName(bd.getParentName());
-						if (!beanName.equals(parentBeanName)) {
+						if (!beanName.equals(parentBeanName)) { // 这里有一个递归，因为父类可能也有自己的父类，所以父类也要通过这个方法来拿完整的RootBeanDefinition
 							pbd = getMergedBeanDefinition(parentBeanName);
 						}
 						else {
@@ -1431,8 +1438,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 						throw new BeanDefinitionStoreException(bd.getResourceDescription(), beanName,
 								"Could not resolve parent bean definition '" + bd.getParentName() + "'", ex);
 					}
+					// 把父类作为一个拷贝对象，先拷贝一下
 					// Deep copy with overridden values.
 					mbd = new RootBeanDefinition(pbd);
+					// 然后通过子类存在的数据进行覆盖，也就是我们新的子类了；所以如果子类没有设置的属性会从父类哪里拷贝过来
 					mbd.overrideFrom(bd);
 				}
 
@@ -1675,13 +1684,15 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	}
 
 	/**
+	 * 判断是否是FactoryBean就是拿到BeanDefinition的class，然后判断是否继承了FactoryBean接口
 	 * Check whether the given bean is defined as a {@link FactoryBean}.
 	 * @param beanName the name of the bean
 	 * @param mbd the corresponding bean definition
 	 */
 	protected boolean isFactoryBean(String beanName, RootBeanDefinition mbd) {
-		Boolean result = mbd.isFactoryBean;
+		Boolean result = mbd.isFactoryBean; // beanDefinition里面会缓存这个数据
 		if (result == null) {
+			// 如果为空则是第一次，则去拿对应的Class对象，判断是否继承了FactoryBean接口，如果继承了则就是FactoryBean
 			Class<?> beanType = predictBeanType(beanName, mbd, FactoryBean.class);
 			result = (beanType != null && FactoryBean.class.isAssignableFrom(beanType));
 			mbd.isFactoryBean = result;
@@ -1849,6 +1860,8 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	}
 
 	/**
+	 * 把bean对象做一次判断是否是真正需要的对象
+	 * 如果是FactoryBean需要返回getObject里面的数据
 	 * Get the object for the given bean instance, either the bean
 	 * instance itself or its created object in case of a FactoryBean.
 	 * @param beanInstance the shared bean instance
@@ -1860,34 +1873,44 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	protected Object getObjectForBeanInstance(
 			Object beanInstance, String name, String beanName, @Nullable RootBeanDefinition mbd) {
 
+		// 如果我们传入进来的原始的beanName包含了&符号表示是想要一个FactoryBean的原始对象，需要进行一个判断
 		// Don't let calling code try to dereference the factory if the bean isn't a factory.
 		if (BeanFactoryUtils.isFactoryDereference(name)) {
 			if (beanInstance instanceof NullBean) {
 				return beanInstance;
 			}
+			// 如果实际上不是一个FactoryBean但是却使用了FactoryBean的前缀，则报错
 			if (!(beanInstance instanceof FactoryBean)) {
 				throw new BeanIsNotAFactoryException(beanName, beanInstance.getClass());
 			}
+			// 设置缓存信息在BeanDefinition里面设置FactoryBean的属性是true
 			if (mbd != null) {
 				mbd.isFactoryBean = true;
 			}
+			// 返回我们的beanInstance
 			return beanInstance;
 		}
 
 		// Now we have the bean instance, which may be a normal bean or a FactoryBean.
 		// If it's a FactoryBean, we use it to create a bean instance, unless the
 		// caller actually wants a reference to the factory.
+		/**
+		 * 如果这个对象没有继承接口FactoryBean，则表示这个对象是一个普通对象，直接返回从单例池里面拿到的原来数据就行了
+		 */
 		if (!(beanInstance instanceof FactoryBean)) {
 			return beanInstance;
 		}
 
+		// ---------------------------------
+		// 走到这个流程就表示我们的bean是一个FactoryBean，并且我们需要拿的数据是getObject里面对应的数据
 		Object object = null;
-		if (mbd != null) {
+		if (mbd != null) { // 设置BeanDefinition里面的属性缓存
 			mbd.isFactoryBean = true;
 		}
-		else {
+		else { // 从FactoryBean的缓存里面拿
 			object = getCachedObjectForFactoryBean(beanName);
 		}
+		// 如果上面没拿到数据
 		if (object == null) {
 			// Return bean instance from factory.
 			FactoryBean<?> factory = (FactoryBean<?>) beanInstance;
@@ -1895,7 +1918,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			if (mbd == null && containsBeanDefinition(beanName)) {
 				mbd = getMergedLocalBeanDefinition(beanName);
 			}
+			// synthetic用来表示这个bean是否正常，如果是!则表示不正常，在后续getObject的bean对象的时候就不需要执行BeanPostProcessor的流程了
 			boolean synthetic = (mbd != null && mbd.isSynthetic());
+			// 从FactoryBean的getObject方法拿到数据，并且存入FactoryBean的缓存map里面
 			object = getObjectFromFactoryBean(factory, beanName, !synthetic);
 		}
 		return object;

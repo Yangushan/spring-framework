@@ -930,9 +930,24 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		// Trigger initialization of all non-lazy singleton beans...
 		for (String beanName : beanNames) {
+			/**
+			 * 得到合并的bean，这里为什么需要合并？因为一个Bean很可能会继承其他bean，所以就需要从父类的bean哪里获取一些属性进行一些合成，
+			 * 最终不管是否有无继承都包装成RootBeanDefinition
+			 */
 			RootBeanDefinition bd = getMergedLocalBeanDefinition(beanName);
-			if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) {
+			/**
+			 * 是否是抽象的BeanDefinition(并不等于一个抽象类)，抽象的BeanDefinition的意思是在BeanDefinition里面有一个属性abstract=true
+			 * 当我们在使用xml定义一个bean的时候，可以设置一个abstract=true，这就表示这个BeanDefinition是抽象的，**而不会生成实际的Bean**
+			 * 抽象的BeanDefinition一般可以用来设置一些通用的属性，作为父类给子类继承，也就是上面的合成bean那块判断的
+			 */
+			if (!bd.isAbstract() && bd.isSingleton() && !bd.isLazyInit()) { // 非抽象的，单例，并且非懒加载才会实例化bean
+				/**
+				 * FactoryBean的判断，关于FactoryBean可以看它的定义的描述
+				 * 就是拿到BeanDefinition里面的class,然后判断是否实现了FactoryBean接口
+				 * @see FactoryBean
+				 */
 				if (isFactoryBean(beanName)) {
+					// 这里会先创建FactoryBean自己的bean而不是工厂的那个bean，所以我们需要拿到FactoryBean自己的bean在前面加上&就可以了
 					Object bean = getBean(FACTORY_BEAN_PREFIX + beanName);
 					if (bean instanceof FactoryBean) {
 						FactoryBean<?> factory = (FactoryBean<?>) bean;
@@ -947,22 +962,26 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 									((SmartFactoryBean<?>) factory).isEagerInit());
 						}
 						if (isEagerInit) {
+							// 这里是创建FactoryBean工厂真正的那个bean也就是通过getObject拿到的那个对象
 							getBean(beanName);
 						}
 					}
 				}
 				else {
+					// 创建bean对象
 					getBean(beanName);
 				}
 			}
 		}
 
+		// 在上面所有非懒加载的单例bean都实例化完成之后
 		// Trigger post-initialization callback for all applicable beans...
 		for (String beanName : beanNames) {
 			Object singletonInstance = getSingleton(beanName);
 			if (singletonInstance instanceof SmartInitializingSingleton) {
 				StartupStep smartInitialize = getApplicationStartup().start("spring.beans.smart-initialize")
 						.tag("beanName", beanName);
+				// 如果我们的bean继承了这个接口，那么还会在这里逐个调用每个实现了这个接口bean的afterSingletonsInstantiated方法
 				SmartInitializingSingleton smartSingleton = (SmartInitializingSingleton) singletonInstance;
 				if (System.getSecurityManager() != null) {
 					AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
