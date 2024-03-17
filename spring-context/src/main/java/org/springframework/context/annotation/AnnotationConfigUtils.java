@@ -230,10 +230,19 @@ public abstract class AnnotationConfigUtils {
 		}
 	}
 
+	/**
+	 * 解析@Lazy, @DependsOn @Role @Primary @Description注解
+	 * @param abd
+	 */
 	public static void processCommonDefinitionAnnotations(AnnotatedBeanDefinition abd) {
 		processCommonDefinitionAnnotations(abd, abd.getMetadata());
 	}
 
+	/**
+	 * 解析@Lazy, @DependsOn @Role @Primary @Description注解
+	 * @param abd
+	 * @param metadata
+	 */
 	static void processCommonDefinitionAnnotations(AnnotatedBeanDefinition abd, AnnotatedTypeMetadata metadata) {
 		AnnotationAttributes lazy = attributesFor(metadata, Lazy.class);
 		if (lazy != null) {

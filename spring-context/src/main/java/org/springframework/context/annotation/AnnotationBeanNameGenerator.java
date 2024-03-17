@@ -79,12 +79,14 @@ public class AnnotationBeanNameGenerator implements BeanNameGenerator {
 	@Override
 	public String generateBeanName(BeanDefinition definition, BeanDefinitionRegistry registry) {
 		if (definition instanceof AnnotatedBeanDefinition) {
+			// 从我们的注解上拿
 			String beanName = determineBeanNameFromAnnotation((AnnotatedBeanDefinition) definition);
 			if (StringUtils.hasText(beanName)) {
 				// Explicit bean name found.
 				return beanName;
 			}
 		}
+		// 如果注解没有设置，则从我们的类的名字上首字母小写的方式（如果第一个第二个字母都是大写则直接返回）
 		// Fallback: generate a unique default bean name.
 		return buildDefaultBeanName(definition, registry);
 	}

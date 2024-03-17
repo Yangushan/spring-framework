@@ -162,6 +162,7 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 		Assert.notNull(registry, "BeanDefinitionRegistry must not be null");
 		this.registry = registry;
 
+		// 注册默认的includeFilters，也就是@Component
 		if (useDefaultFilters) {
 			registerDefaultFilters();
 		}
@@ -273,22 +274,34 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 		Assert.notEmpty(basePackages, "At least one base package must be specified");
 		Set<BeanDefinitionHolder> beanDefinitions = new LinkedHashSet<>();
 		for (String basePackage : basePackages) {
+			// 获取包路径下所有的BeanDefinition
 			Set<BeanDefinition> candidates = findCandidateComponents(basePackage);
+			// 遍历
 			for (BeanDefinition candidate : candidates) {
 				ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(candidate);
 				candidate.setScope(scopeMetadata.getScopeName());
+				// 获取beanName
 				String beanName = this.beanNameGenerator.generateBeanName(candidate, this.registry);
+
+				// 给BeanDefinition对象里面的一些字段设置一些默认的值
 				if (candidate instanceof AbstractBeanDefinition) {
 					postProcessBeanDefinition((AbstractBeanDefinition) candidate, beanName);
 				}
+
 				if (candidate instanceof AnnotatedBeanDefinition) {
+					// 解析@Lazy, @DependsOn @Role @Primary @Description注解
+					// 设置到BeanDefinition里面
 					AnnotationConfigUtils.processCommonDefinitionAnnotations((AnnotatedBeanDefinition) candidate);
 				}
+
+				// 再次检查，判断beanName是否重复了
 				if (checkCandidate(beanName, candidate)) {
+					// 如果校验通过，则把beanDefinition包装成BeanDefinitionHolder
 					BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(candidate, beanName);
 					definitionHolder =
 							AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
 					beanDefinitions.add(definitionHolder);
+					// 注册，也就是放入Map
 					registerBeanDefinition(definitionHolder, this.registry);
 				}
 			}
@@ -341,6 +354,8 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 		if (originatingDef != null) {
 			existingDef = originatingDef;
 		}
+		// 是否兼容，如果兼容返回false表示不会重新注册spring容器，否则抛出冲突异常
+		// 比如有可能相同的一个类被扫描2次
 		if (isCompatible(beanDefinition, existingDef)) {
 			return false;
 		}
@@ -361,6 +376,7 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 	 * new definition to be skipped in favor of the existing definition
 	 */
 	protected boolean isCompatible(BeanDefinition newDef, BeanDefinition existingDef) {
+		// 两个类是否兼容，是否可能是同一个类被扫描多次
 		return (!(existingDef instanceof ScannedGenericBeanDefinition) ||  // explicitly registered overriding bean
 				(newDef.getSource() != null && newDef.getSource().equals(existingDef.getSource())) ||  // scanned same file twice
 				newDef.equals(existingDef));  // scanned equivalent class twice
