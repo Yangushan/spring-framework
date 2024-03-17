@@ -1,0 +1,2 @@
+org.yangushan.service.UserService=org.springframework.stereotype.Component
+org.yangushan.service.OrderService=org.springframework.stereotype.Component
