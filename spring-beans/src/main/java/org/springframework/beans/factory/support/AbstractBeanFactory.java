@@ -2180,9 +2180,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	static class BeanPostProcessorCache {
 
 		/**
-		 * 用来存放特殊的InstantiationAwareBeanPostProcessor列表，在这个列表的对象，spring在创建bean的时候会调用
-		 * 这个对象里面的postProcessBeforeInstantiation方法来判断是否使用自定义的new bean对象的方式。
-		 * 如果这个方法返回有数据，则spring会认为我们使用自定义的new bean的方式来创建对象，就不会再去使用class构造方法来帮我们New对象了
+		 * 用来存放特殊的InstantiationAwareBeanPostProcessor列表，
+		 * 1. 在这个列表的对象，spring在创建bean的时候会调用
+		 * 		这个对象里面的postProcessBeforeInstantiation方法来判断是否使用自定义的new bean对象的方式。
+		 * 		如果这个方法返回有数据，则spring会认为我们使用自定义的new bean的方式来创建对象，就不会再去使用class构造方法来帮我们New对象了
+		 * <p></p>
+		 * 2. 当走到属性填充流程，会调用这个列表里面的postProcessProperties方法
+		 * 		而我们的@Autowired, @Value, @Inject就是在这个流程中进行属性的填充
 		 */
 		final List<InstantiationAwareBeanPostProcessor> instantiationAware = new ArrayList<>();
 

@@ -1477,7 +1477,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				pvs = mbd.getPropertyValues();
 			}
 			// 循环调用InstantiationAwareBeanPostProcessor里面的postProcessProperties方法
-			// 需要注意的是我们的@Autowired, @Resource @Inject就是在这个流程中实现的
+			// 需要注意的是我们的@Autowired（AutowiredAnnotationBeanPostProcessor）, @Value @Inject就是在这个流程中实现的
 			// 所以这里主要是完成了我们Spring的一个依赖注入功能的地方
 			for (InstantiationAwareBeanPostProcessor bp : getBeanPostProcessorCache().instantiationAware) {
 				PropertyValues pvsToUse = bp.postProcessProperties(pvs, bw.getWrappedInstance(), beanName);
@@ -1500,7 +1500,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			checkDependencies(beanName, mbd, filteredPds, pvs);
 		}
 
-		if (pvs != null) { // 就是在这里把我们自定义的一些propertyValue设置到bean里面
+		// 就是在这里把我们自定义的一些propertyValue设置到bean里面
+		// 需要注意的是：假如我们在上面的依赖注入中设置了某个属性，
+		// 然后我们在propertyValue中也有这个属性，那么最终会是propertyValue里面的数据对依赖注入的覆盖
+		if (pvs != null) {
 			applyPropertyValues(beanName, mbd, bw, pvs);
 		}
 	}
@@ -1517,11 +1520,14 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	protected void autowireByName(
 			String beanName, AbstractBeanDefinition mbd, BeanWrapper bw, MutablePropertyValues pvs) {
 
+		// 拿到所有有set方法之类条件的字段列表
 		String[] propertyNames = unsatisfiedNonSimpleProperties(mbd, bw);
 		for (String propertyName : propertyNames) {
+			// 判断这个字段名是否存在bean，如果存在则把它假如到PropertyValues里面，等待最后的属性赋值
 			if (containsBean(propertyName)) {
 				Object bean = getBean(propertyName);
 				pvs.add(propertyName, bean);
+				// 由于这是注入依赖的一种，所以需要缓存到依赖的map里面
 				registerDependentBean(propertyName, beanName);
 				if (logger.isTraceEnabled()) {
 					logger.trace("Added autowiring by name from bean name '" + beanName +
@@ -1601,13 +1607,17 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	protected String[] unsatisfiedNonSimpleProperties(AbstractBeanDefinition mbd, BeanWrapper bw) {
 		Set<String> result = new TreeSet<>();
 		PropertyValues pvs = mbd.getPropertyValues();
+		// 这里的这个PropertyDescriptors会拿到我们bean里面所有的字段，也就是含有get/set方法的，尽管可能不存在这个字段只存在get/set，但是也会识别为一个字段
 		PropertyDescriptor[] pds = bw.getPropertyDescriptors();
 		for (PropertyDescriptor pd : pds) {
+			// 之后遍历所有的字段，判断是否有write方法，在我们之前的propertyValue里面是否已经设置过这个字段了
+			// 又或者是否是一个普通的字段（普通=number, string, date之类的简单类型）
 			if (pd.getWriteMethod() != null && !isExcludedFromDependencyCheck(pd) && !pvs.contains(pd.getName()) &&
 					!BeanUtils.isSimpleProperty(pd.getPropertyType())) {
 				result.add(pd.getName());
 			}
 		}
+		// 最后得到所有符合的字段名称进行返回
 		return StringUtils.toStringArray(result);
 	}
 

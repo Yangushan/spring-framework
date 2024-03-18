@@ -25,11 +25,19 @@ import org.springframework.lang.Nullable;
 /**
  *
  * <p>
+ *     第一大功能：
  *     这个BeanPostProcessor，Spring在实例化bean的时候也就是new bean的时候，
  *     会先判断系统中是否存在InstantiationAwareBeanPostProcessor，如果存在则循环调用里面的
  *     postProcessBeforeInstantiation方法，判断是否使用自定义的方式去new一个bean，
  *     如果返回不为null也就是我们使用自己定义的方式去new bean，那么spring就不会在通过推断构造方法的方式去new bean
  *     尽管使用这种方式new的bean，spring也会依然走BeanPostProcessor的after方法去完成AOP流程
+ * </p>
+ *
+ * <p>
+ *     第二大功能：
+ *     当一个bean走的Spring自带的new流程而不是上面那个我们自己实现的new流程的时候，
+ *     当走到属性填充这个步骤的时候，会调用postProcessProperties方法，进行一些属性的赋值
+ *     我们的@Autowired、@Value、@Inject注解的属性注入就是在这个流程中实现的
  * </p>
  *
  * Subinterface of {@link BeanPostProcessor} that adds a before-instantiation callback,
@@ -113,8 +121,9 @@ import org.springframework.lang.Nullable;
 	}
 
 	/**
-	 *
-	 *
+	 * 在bean创建，属性填充这个流程中，会调用这个方法进行一些属性赋值
+	 * 我们的@Autowired，@Value，@Inject就是在这个流程中被赋值的
+	 *<p></p>
 	 *
 	 * Post-process the given property values before the factory applies them
 	 * to the given bean, without any need for property descriptors.

@@ -250,8 +250,15 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 	}
 
 
+	/**
+	 * 这个方法是在实例化之后会调用
+	 * @param beanDefinition the merged bean definition for the bean
+	 * @param beanType the actual type of the managed bean instance
+	 * @param beanName the name of the bean
+	 */
 	@Override
 	public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, Class<?> beanType, String beanName) {
+		// 这里会先找到所有需要注入的方法和field存入缓存当中
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, beanType, null);
 		metadata.checkConfigMembers(beanDefinition);
 	}
@@ -403,6 +410,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 
 	@Override
 	public PropertyValues postProcessProperties(PropertyValues pvs, Object bean, String beanName) {
+		// 由于在postProcessMergedBeanDefinition方法中已经找到了所有的field和method，所以这里直接使用缓存了
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, bean.getClass(), pvs);
 		try {
 			metadata.inject(bean, beanName, pvs);
@@ -468,6 +476,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 	}
 
 	private InjectionMetadata buildAutowiringMetadata(Class<?> clazz) {
+		// 判断这个bean的class是否需要进行注入，有一些class是不需要注入的，比如Java开头的一些string，number等等
 		if (!AnnotationUtils.isCandidateClass(clazz, this.autowiredAnnotationTypes)) {
 			return InjectionMetadata.EMPTY;
 		}
@@ -476,29 +485,45 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 		Class<?> targetClass = clazz;
 
 		do {
+			// 找到所有符合条件的field，也就是包含了@Value和@Autowired,@Inject的
 			final List<InjectionMetadata.InjectedElement> fieldElements = new ArrayList<>();
 			ReflectionUtils.doWithLocalFields(targetClass, field -> {
 				MergedAnnotation<?> ann = findAutowiredAnnotation(field);
 				if (ann != null) {
+					// 如果是静态字段的，则直接忽略
+					// 为什么静态方法或者字段要忽略？
+					// 假如我们的A bean里面有一个static b field，a和b都是一个原型bean
+					// 那么我们每次getBean A的时候，A里面的B应该不一样，但是如果我们这里的static赋值了
+					// 那么我们的static就会被第二次getBean A的那个b覆盖掉，因为是一个static，也就导致了我们所有的A都会用的一个B的bean，这就不符合我们的原型规范了
 					if (Modifier.isStatic(field.getModifiers())) {
 						if (logger.isInfoEnabled()) {
 							logger.info("Autowired annotation is not supported on static fields: " + field);
 						}
 						return;
 					}
+					// 这里会有一些判断，如果我们是@Autowired还会判断required属性是否是true
 					boolean required = determineRequiredStatus(ann);
+					// 构建field的注入点
 					fieldElements.add(new AutowiredFieldElement(field, required));
 				}
 			});
 
+			// 找到所有符合条件的方法
 			final List<InjectionMetadata.InjectedElement> methodElements = new ArrayList<>();
 			ReflectionUtils.doWithLocalMethods(targetClass, method -> {
+				// 桥接流程
+				/**
+				 * 桥接流程是针对泛型参数作为方法产生的，java在帮我们生成一个class的时候会创建一个对应的桥接方法
+				 * 所以spring在这里会进行一个忽略桥接方法（如果我们的方法a有@Autowired，那么java创建的桥接方法也会有这个注解，所以这里要做过滤）
+				 */
 				Method bridgedMethod = BridgeMethodResolver.findBridgedMethod(method);
 				if (!BridgeMethodResolver.isVisibilityBridgeMethodPair(method, bridgedMethod)) {
 					return;
 				}
+				// 这里的判断和field一样，也是判断是否有@Value, @Autowired, @Inject
 				MergedAnnotation<?> ann = findAutowiredAnnotation(bridgedMethod);
 				if (ann != null && method.equals(ClassUtils.getMostSpecificMethod(method, clazz))) {
+					// 如果是一个静态方法，则忽略
 					if (Modifier.isStatic(method.getModifiers())) {
 						if (logger.isInfoEnabled()) {
 							logger.info("Autowired annotation is not supported on static methods: " + method);
@@ -511,16 +536,18 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 									method);
 						}
 					}
+					// 构建注入点，判断是否是required，如果required=false在注入的时候找不到对应的bean不会报错，否则会报错
 					boolean required = determineRequiredStatus(ann);
 					PropertyDescriptor pd = BeanUtils.findPropertyForMethod(bridgedMethod, clazz);
 					methodElements.add(new AutowiredMethodElement(method, required, pd));
 				}
 			});
 
+			// 父类的方法和属性放在最上面执行，因为field排在method前面，所以会先执行field再执行Method
 			elements.addAll(0, sortMethodElements(methodElements, targetClass));
 			elements.addAll(0, fieldElements);
 			targetClass = targetClass.getSuperclass();
-		}
+		} // 这里也是一个循环的流程，一直找到最上面的父类
 		while (targetClass != null && targetClass != Object.class);
 
 		return InjectionMetadata.forElements(elements, clazz);
@@ -529,6 +556,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 	@Nullable
 	private MergedAnnotation<?> findAutowiredAnnotation(AccessibleObject ao) {
 		MergedAnnotations annotations = MergedAnnotations.from(ao);
+		// 这里在bean初始化的时候会给autowiredAnnotationTypes设置3个注解，一个是@Value, @Autowired, @Inject
 		for (Class<? extends Annotation> type : this.autowiredAnnotationTypes) {
 			MergedAnnotation<?> annotation = annotations.get(type);
 			if (annotation.isPresent()) {
@@ -678,6 +706,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 		protected void inject(Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
 			Field field = (Field) this.member;
 			Object value;
+			// 如果这个field的数据已经缓存了，则使用缓存
 			if (this.cached) {
 				try {
 					value = resolveCachedArgument(beanName, this.cachedFieldValue);
@@ -689,11 +718,12 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 					value = resolveFieldValue(field, bean, beanName);
 				}
 			}
-			else {
+			else { // 解析field对应在BeanFactory里面的bean对象
 				value = resolveFieldValue(field, bean, beanName);
 			}
 			if (value != null) {
 				ReflectionUtils.makeAccessible(field);
+				// 使用反射注入属性
 				field.set(bean, value);
 			}
 		}
@@ -757,11 +787,13 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 
 		@Override
 		protected void inject(Object bean, @Nullable String beanName, @Nullable PropertyValues pvs) throws Throwable {
+			// 如果这个方法中已经有propertyValue了，则跳过
 			if (checkPropertySkipping(pvs)) {
 				return;
 			}
 			Method method = (Method) this.member;
 			Object[] arguments;
+			// 方法对应的bean已经有缓存了，使用缓存
 			if (this.cached) {
 				try {
 					arguments = resolveCachedArguments(beanName, this.cachedMethodArguments);
@@ -773,11 +805,12 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 					arguments = resolveMethodArguments(method, bean, beanName);
 				}
 			}
-			else {
+			else { // 解析方法上对应的参数需要的bean对象，从BeanFactory里面去拿
 				arguments = resolveMethodArguments(method, bean, beanName);
 			}
 			if (arguments != null) {
 				try {
+					// 使用反射调用我们的方法进行属性的注入
 					ReflectionUtils.makeAccessible(method);
 					method.invoke(bean, arguments);
 				}
