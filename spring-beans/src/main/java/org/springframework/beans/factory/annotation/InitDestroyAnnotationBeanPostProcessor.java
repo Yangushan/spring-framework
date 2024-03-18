@@ -229,7 +229,10 @@ public class InitDestroyAnnotationBeanPostProcessor
 			final List<LifecycleElement> currInitMethods = new ArrayList<>();
 			final List<LifecycleElement> currDestroyMethods = new ArrayList<>();
 
+			// 遍历class里面所有的method
 			ReflectionUtils.doWithLocalMethods(targetClass, method -> {
+				// 在子类CommonAnnotationBeanPostProcessor中，创建的时候会给这两个属性赋值
+				// 判断这个method是否有init的注解，这个参数在创建的时候会给设置一个初始值@PostConstrct
 				if (this.initAnnotationType != null && method.isAnnotationPresent(this.initAnnotationType)) {
 					LifecycleElement element = new LifecycleElement(method);
 					currInitMethods.add(element);
@@ -237,6 +240,7 @@ public class InitDestroyAnnotationBeanPostProcessor
 						logger.trace("Found init method on class [" + clazz.getName() + "]: " + method);
 					}
 				}
+				// 这个同理，会被默认设置初始值@PreDestroy
 				if (this.destroyAnnotationType != null && method.isAnnotationPresent(this.destroyAnnotationType)) {
 					currDestroyMethods.add(new LifecycleElement(method));
 					if (logger.isTraceEnabled()) {
@@ -245,10 +249,13 @@ public class InitDestroyAnnotationBeanPostProcessor
 				}
 			});
 
+			// 这个需要注意，这里是一个do while的循环，会不断的去找bean的父类，也就是最顶层的父类的InitMethod会被放在最前面
+			// 所以如果我们的bean有父类，并且都设置有@PostConstruct注解，那么会先请求父类的方法，再请求子类的方法
 			initMethods.addAll(0, currInitMethods);
+			// 销毁逻辑就没这个判断
 			destroyMethods.addAll(currDestroyMethods);
 			targetClass = targetClass.getSuperclass();
-		}
+		} // 这里直到找不到父类为止
 		while (targetClass != null && targetClass != Object.class);
 
 		return (initMethods.isEmpty() && destroyMethods.isEmpty() ? this.emptyLifecycleMetadata :

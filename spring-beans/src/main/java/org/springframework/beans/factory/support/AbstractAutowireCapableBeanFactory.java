@@ -637,9 +637,15 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// Initialize the bean instance.
 		Object exposedObject = bean;
 		try {
-			// 属性填充
+			// 属性填充(@autowired, @Resource等注入，还有PropertyValue的属性赋值；包括@Value等)
 			populateBean(beanName, mbd, instanceWrapper);
 			// 前面是实例化也就是new，现在是对bean进行初始化
+			/**
+			 * 调用一些前置Aware回调
+			 * 然后初始化前调用BeanPostProcessor的before(这里关注到两个一个是@PostConstrct的方法调用还有一个是我们经常用到的ApplicationContextAware等各种aware的回调)
+			 * 初始化（调用InitializingBean的方法和InitMethodName）
+			 * 初始化后BeanPostProcessor的after）
+			 */
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
 		}
 		catch (Throwable ex) {
@@ -1853,7 +1859,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		try {
-			// 调用初始化方法
+			// 调用初始化方法（调用InitializingBean的方法和InitMethodName）
 			invokeInitMethods(beanName, wrappedBean, mbd);
 		}
 		catch (Throwable ex) {
