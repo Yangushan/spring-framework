@@ -222,12 +222,15 @@ public class InjectionMetadata {
 		protected void inject(Object target, @Nullable String requestingBeanName, @Nullable PropertyValues pvs)
 				throws Throwable {
 
+			// 字段注入
 			if (this.isField) {
 				Field field = (Field) this.member;
 				ReflectionUtils.makeAccessible(field);
+				// getResourceToInject这个方法由子类实现，所以如果是我们的@Resource那么就会调用它自己的实现
 				field.set(target, getResourceToInject(target, requestingBeanName));
 			}
 			else {
+				// 方法注入
 				if (checkPropertySkipping(pvs)) {
 					return;
 				}

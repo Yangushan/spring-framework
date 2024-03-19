@@ -1372,6 +1372,15 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		InjectionPoint previousInjectionPoint = ConstructorResolver.setCurrentInjectionPoint(descriptor);
 		try {
+
+			// 如果这里通过descriptor解析出来的数据不为空，则直接返回
+			/**
+			 * （这里有可能是ShortcutDependencyDescriptor对象的时候，那么就会直接返回数据了）
+			 * 什么时候这里会是ShortcutDependencyDescriptor对象？这是考虑到了原型的情况
+			 * 假如我们有一个bean A是一个原型bean，需要依赖注入b bean，那么这个时候这个缓存就生效了，而不需要每次进来都对b进行一次依赖注入的查找
+			 * 因为已经缓存了具体的beanName，所以这里只需要对这个beanName直接进行getBean查找即可
+			 * 那么这里为什么缓存的beanName？因为我们的b bean也有可能是一个原型bean，如果直接缓存的bean就会有问题了，所以这里只能缓存beanName
+			 */
 			Object shortcut = descriptor.resolveShortcut(this);
 			if (shortcut != null) {
 				return shortcut;
@@ -1415,6 +1424,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 			// 不是上面的复杂bean，是一个普通的bean，那么这里就通过beanName和type去拿符合的bean数据
 			// 需要注意的是返回的数据Key是beanName，value有可能是直接的bean对象也有可能是还没New的一个bean class对象
+			/**
+			 * findAutowireCandidates方法是比较核心的，就是从bean工厂里面根据type找到匹配的bean列表
+			 */
 			Map<String, Object> matchingBeans = findAutowireCandidates(beanName, type, descriptor);
 			if (matchingBeans.isEmpty()) {
 				// 如果required是true，但是又没找到符合的数据，报错

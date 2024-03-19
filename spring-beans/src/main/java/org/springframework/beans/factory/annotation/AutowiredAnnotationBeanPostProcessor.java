@@ -413,6 +413,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 		// 由于在postProcessMergedBeanDefinition方法中已经找到了所有的field和method，所以这里直接使用缓存了
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, bean.getClass(), pvs);
 		try {
+			// 由于我们实现了不同的inject方法，field调用自己的，method调用自己的
 			metadata.inject(bean, beanName, pvs);
 		}
 		catch (BeanCreationException ex) {
@@ -677,6 +678,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 		if (cachedArgument instanceof DependencyDescriptor) {
 			DependencyDescriptor descriptor = (DependencyDescriptor) cachedArgument;
 			Assert.state(this.beanFactory != null, "No BeanFactory available");
+			// 这里实际上
 			return this.beanFactory.resolveDependency(descriptor, beanName, null, null);
 		}
 		else {
@@ -751,6 +753,8 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 							String autowiredBeanName = autowiredBeanNames.iterator().next();
 							if (beanFactory.containsBean(autowiredBeanName) &&
 									beanFactory.isTypeMatch(autowiredBeanName, field.getType())) {
+								// 可以看到这里缓存的是一个ShortcutDependencyDescriptor，而不是直接的bean
+								// 在ShortcutDependencyDescriptor中又缓存了我们的beanName，最后会调用它的resolveShortcut去拿到真正的bean
 								cachedFieldValue = new ShortcutDependencyDescriptor(desc, autowiredBeanName);
 							}
 						}
@@ -796,6 +800,11 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 			// 方法对应的bean已经有缓存了，使用缓存
 			if (this.cached) {
 				try {
+					/**
+					 * 需要注意这里的cached对象，并不是直接缓存的我们的bean对象，而是缓存的beanName
+					 * 返回的是一个DependencyDescriptor对象的子类ShortcutDependencyDescriptor
+					 * 里面存了一个属性shortcut其实就是我们的beanName，最终还是调用getBean的方法来拿到数据
+					 */
 					arguments = resolveCachedArguments(beanName, this.cachedMethodArguments);
 				}
 				catch (BeansException ex) {
@@ -855,7 +864,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 				currDesc.setContainingClass(bean.getClass());
 				descriptors[i] = currDesc;
 				try {
-					// 根据描述对象，beanName，注入对象的beanName，来获取对应参数位置的bean
+					// 根据描述对象，beanName，注入对象的beanName，来获取对应参数位置的bean，依赖注入核心方法
 					Object arg = beanFactory.resolveDependency(currDesc, beanName, autowiredBeanNames, typeConverter);
 					if (arg == null && !this.required) {
 						arguments = null;
@@ -881,6 +890,8 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 								String autowiredBeanName = it.next();
 								if (arguments[i] != null && beanFactory.containsBean(autowiredBeanName) &&
 										beanFactory.isTypeMatch(autowiredBeanName, paramTypes[i])) {
+									// 这里使用了ShortcutDependencyDescriptor存放数据，所以缓存里面真是存放的并不是bean对象，而是这个对象
+									// 当有了缓存拿数据的时候会调用这个对象里面的resolveShortcut方法，最终还是通过getBean去拿数据
 									cachedMethodArguments[i] = new ShortcutDependencyDescriptor(
 											descriptors[i], autowiredBeanName);
 								}
@@ -906,6 +917,9 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 	@SuppressWarnings("serial")
 	private static class ShortcutDependencyDescriptor extends DependencyDescriptor {
 
+		/**
+		 * 缓存的bean的名字
+		 */
 		private final String shortcut;
 
 		public ShortcutDependencyDescriptor(DependencyDescriptor original, String shortcut) {

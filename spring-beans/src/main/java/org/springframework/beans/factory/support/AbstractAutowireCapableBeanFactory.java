@@ -1478,6 +1478,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 			// 循环调用InstantiationAwareBeanPostProcessor里面的postProcessProperties方法
 			// 需要注意的是我们的@Autowired（AutowiredAnnotationBeanPostProcessor）, @Value @Inject就是在这个流程中实现的
+			// @Resource注解是通过CommonAnnotationBeanPostProcessor来完成的
 			// 所以这里主要是完成了我们Spring的一个依赖注入功能的地方
 			for (InstantiationAwareBeanPostProcessor bp : getBeanPostProcessorCache().instantiationAware) {
 				PropertyValues pvsToUse = bp.postProcessProperties(pvs, bw.getWrappedInstance(), beanName);
