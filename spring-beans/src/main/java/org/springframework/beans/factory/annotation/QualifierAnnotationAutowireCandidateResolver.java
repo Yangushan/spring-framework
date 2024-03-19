@@ -144,8 +144,10 @@ public class QualifierAnnotationAutowireCandidateResolver extends GenericTypeAwa
 	 */
 	@Override
 	public boolean isAutowireCandidate(BeanDefinitionHolder bdHolder, DependencyDescriptor descriptor) {
+		// 先用父类的来匹配，如果父类匹配自己在做一次校验
 		boolean match = super.isAutowireCandidate(bdHolder, descriptor);
 		if (match) {
+			// 处理@Qualifiers注解的判断
 			match = checkQualifiers(bdHolder, descriptor.getAnnotations());
 			if (match) {
 				MethodParameter methodParam = descriptor.getMethodParameter();
@@ -172,7 +174,9 @@ public class QualifierAnnotationAutowireCandidateResolver extends GenericTypeAwa
 			Class<? extends Annotation> type = annotation.annotationType();
 			boolean checkMeta = true;
 			boolean fallbackToMeta = false;
+			// 判断是否有@Qulifier属性
 			if (isQualifier(type)) {
+				// 检查@Qulifier属性是否和我们的BeanDefinition匹配
 				if (!checkQualifier(bdHolder, annotation, typeConverter)) {
 					fallbackToMeta = true;
 				}
@@ -180,14 +184,18 @@ public class QualifierAnnotationAutowireCandidateResolver extends GenericTypeAwa
 					checkMeta = false;
 				}
 			}
+			// 如果上面的判断结束了，还有一层判断，就是我们的注解自己页可能有自己的注解，所以还要去这个注解上查询是否有@Qualifier属性
 			if (checkMeta) {
 				boolean foundMeta = false;
+				// 拿到注解自己的注解
 				for (Annotation metaAnn : type.getAnnotations()) {
 					Class<? extends Annotation> metaType = metaAnn.annotationType();
+					// 去判断是否有@Qualifier属性，如果判断通过
 					if (isQualifier(metaType)) {
 						foundMeta = true;
 						// Only accept fallback match if @Qualifier annotation has a value...
 						// Otherwise, it is just a marker for a custom qualifier annotation.
+						// 检查是否匹配
 						if ((fallbackToMeta && ObjectUtils.isEmpty(AnnotationUtils.getValue(metaAnn))) ||
 								!checkQualifier(bdHolder, metaAnn, typeConverter)) {
 							return false;
@@ -215,6 +223,7 @@ public class QualifierAnnotationAutowireCandidateResolver extends GenericTypeAwa
 	}
 
 	/**
+	 * 检查@Qualifier注解和我们的BeanDefinition是否匹配
 	 * Match the given qualifier annotation against the candidate bean definition.
 	 */
 	protected boolean checkQualifier(

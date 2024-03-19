@@ -845,6 +845,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			throws NoSuchBeanDefinitionException {
 
 		String bdName = BeanFactoryUtils.transformedBeanName(beanName);
+		// 如果当前的BeanFactory里面有这个beanName
 		if (containsBeanDefinition(bdName)) {
 			return isAutowireCandidate(beanName, getMergedLocalBeanDefinition(bdName), descriptor, resolver);
 		}
@@ -883,10 +884,12 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		if (mbd.isFactoryMethodUnique && mbd.factoryMethodToIntrospect == null) {
 			new ConstructorResolver(this).resolveFactoryMethodIfPossible(mbd);
 		}
+		// 包装成Holder
 		BeanDefinitionHolder holder = (beanName.equals(bdName) ?
 				this.mergedBeanDefinitionHolders.computeIfAbsent(beanName,
 						key -> new BeanDefinitionHolder(mbd, beanName, getAliases(bdName))) :
 				new BeanDefinitionHolder(mbd, beanName, getAliases(bdName)));
+		// 这里的resolver会是，QualifierAnnotationAutowireCandidateResolver
 		return resolver.isAutowireCandidate(holder, descriptor);
 	}
 
@@ -1645,6 +1648,12 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		for (String candidate : candidateNames) {
 			// isSelfReference的判断是自己注入自己的意思，所以这里不能是自己注入自己的情况
 			// isAutowireCandidate判断是否可以依赖注入，如果可以则加入到结果中
+			/**
+			 * isAutowireCandidate其实是一个BeanDefinition里面的一个属性，我们在@Bean的时候，可以设置这个属性为false，表示这个bean不能作为一个依赖注入的bean去使用
+			 * 	这样如果当我们有好几个bean满足的时候，我们想要指定某一个Bean作为别人依赖注入去使用的，就可以把其他几个bean的这个属性设置为false
+			 * 还有一点是关于isAutowireCandidate的实现，里面使用了一个责任链模式，默认是使用的子类QualifierAnnotationAutowireCandidateResolver去实现的
+			 * 	但是子类又会调用父类，父类又去调用了父类；可以注意一下这个模式设计
+			 */
 			if (!isSelfReference(beanName, candidate) && isAutowireCandidate(candidate, descriptor)) {
 				// 加入到result里面
 				addCandidateEntry(result, candidate, descriptor, requiredType);
