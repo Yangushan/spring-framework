@@ -44,7 +44,12 @@ public class DefaultParameterNameDiscoverer extends PrioritizedParameterNameDisc
 		if (KotlinDetector.isKotlinReflectPresent() && !NativeDetector.inNativeImage()) {
 			addDiscoverer(new KotlinReflectionParameterNameDiscoverer());
 		}
+		// 使用discover去查找我们的method里面参数的名称
+		// standard是通过，当我们编译的时候在编译里面设置-parameter参数的方式，我们通过java提供的method.getParameters里面能拿到参数名称
+		// 但并不是所有的项目打包都会增加这个参数配置
 		addDiscoverer(new StandardReflectionParameterNameDiscoverer());
+
+		// 所以还需要用下面这个方法，这个方法就是在我们编译的class文件中，每个项目都有一个局部变量表，在里面可以拿到具体的方法参数名称，可以看show bytecode
 		addDiscoverer(new LocalVariableTableParameterNameDiscoverer());
 	}
 

@@ -832,6 +832,13 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 			return arguments;
 		}
 
+		/**
+		 * 解析方法上的所有参数，然后根据参数从BeanFactory里面找到这个bean,组合成数组返回
+		 * @param method
+		 * @param bean
+		 * @param beanName
+		 * @return
+		 */
 		@Nullable
 		private Object[] resolveMethodArguments(Method method, Object bean, @Nullable String beanName) {
 			int argumentCount = method.getParameterCount();
@@ -841,16 +848,20 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 			Assert.state(beanFactory != null, "No BeanFactory available");
 			TypeConverter typeConverter = beanFactory.getTypeConverter();
 			for (int i = 0; i < arguments.length; i++) {
+				// 根据方法上的下表，从方法上拿到对应的参数，构建成MethodParameter对象
 				MethodParameter methodParam = new MethodParameter(method, i);
+				// 构建一个DependencyDescriptor依赖注入的描述对象
 				DependencyDescriptor currDesc = new DependencyDescriptor(methodParam, this.required);
 				currDesc.setContainingClass(bean.getClass());
 				descriptors[i] = currDesc;
 				try {
+					// 根据描述对象，beanName，注入对象的beanName，来获取对应参数位置的bean
 					Object arg = beanFactory.resolveDependency(currDesc, beanName, autowiredBeanNames, typeConverter);
 					if (arg == null && !this.required) {
 						arguments = null;
 						break;
 					}
+					// 存放到数组中
 					arguments[i] = arg;
 				}
 				catch (BeansException ex) {
@@ -858,6 +869,7 @@ public class AutowiredAnnotationBeanPostProcessor implements SmartInstantiationA
 				}
 			}
 			synchronized (this) {
+				// 根据上面拿到的数据然后放到缓存里面
 				if (!this.cached) {
 					if (arguments != null) {
 						DependencyDescriptor[] cachedMethodArguments = Arrays.copyOf(descriptors, argumentCount);
