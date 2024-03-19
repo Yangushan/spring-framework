@@ -1,8 +1,8 @@
 package org.yangushan;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.yangushan.service.*;
+import org.yangushan.service.qualifier.LoadBalanceTestBean;
 
 public class Main {
 
@@ -41,6 +41,26 @@ public class Main {
 		// 测试自己注入自己的流程
 		SelfBeanSuper selfBeanSuper = (SelfBeanSuper) context.getBean("selfBeanSuper");
 		selfBeanSuper.test();
+
+
+		// 下面的java API可以打印出我们子类中具体指定的父类的泛型具体指定的是什么
+		/**
+		 * 可以看出来GenericTypeAwareAutowireCandidateResolver这个解析器在解析哪些bean可以注入的时候，使用了java这种特性去分析了应该使用哪个类来解析
+		 * 所以我们这里的test方法打印出了各自子类指定的泛型类型
+		 */
+		// org.yangushan.service.GenericSuper<org.yangushan.service.Student, org.yangushan.service.Person>
+		GenericChild1 genericChild1 = (GenericChild1) context.getBean("genericChild1");
+		System.out.println(genericChild1.getClass().getGenericSuperclass().getTypeName());
+		genericChild1.test();
+		GenericChild2 genericChild2 = (GenericChild2) context.getBean("genericChild2");
+		//org.yangushan.service.GenericSuper<org.yangushan.service.UserService, org.yangushan.service.OrderService>
+		System.out.println(genericChild2.getClass().getGenericSuperclass().getTypeName());
+		genericChild2.test();
+
+
+		// 这里对Qualifier注解的一种测试
+		LoadBalanceTestBean loadBalanceTestBean = (LoadBalanceTestBean) context.getBean("loadBalanceTestBean");
+		loadBalanceTestBean.test();
 
 	}
 
