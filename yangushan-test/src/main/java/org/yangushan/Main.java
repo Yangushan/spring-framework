@@ -1,5 +1,6 @@
 package org.yangushan;
 
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.yangushan.service.*;
 import org.yangushan.service.qualifier.LoadBalanceTestBean;
@@ -61,6 +62,16 @@ public class Main {
 		// 这里对Qualifier注解的一种测试
 		LoadBalanceTestBean loadBalanceTestBean = (LoadBalanceTestBean) context.getBean("loadBalanceTestBean");
 		loadBalanceTestBean.test();
+
+		// 这里的测试主要是针对在代码
+		// DefaultListableBeanFactory.doResolveDependency
+		// 中，代码的开始有一段缓存的原理，为什么要缓存一个bean的依赖注入，就是为了原型考虑
+		// 这样第二次原型又get的时候，又要进行依赖注入，就不需要找了，可以直接找到对应符合条件的beanName进行getBean注入
+		((Person1)(context.getBean("person1"))).test();
+		((Person1)(context.getBean("person1"))).test();
+
+		// 测试@Resource注入流程的类
+		((ResourceTestBean)context.getBean("resourceTestBean")).test();
 
 	}
 

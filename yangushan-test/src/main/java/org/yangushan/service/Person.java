@@ -4,6 +4,7 @@ package org.yangushan.service;
  * created by yangushan
  * 2024/3/17 21:43
  */
+
 public class Person {
 
 	private Student student;
