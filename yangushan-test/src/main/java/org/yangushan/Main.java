@@ -2,10 +2,7 @@ package org.yangushan;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
-import org.yangushan.service.Person;
-import org.yangushan.service.Student;
-import org.yangushan.service.User;
-import org.yangushan.service.UserService;
+import org.yangushan.service.*;
 
 public class Main {
 
@@ -36,6 +33,14 @@ public class Main {
 		// 为了测试bean属性里面的autowired流程
 		Person person = (Person) context.getBean("person");
 		person.test();
+
+		// 测试复杂bean依赖注入的流程
+		MultiBean multiBean = (MultiBean) context.getBean("multiBean");
+		multiBean.test();
+
+		// 测试自己注入自己的流程
+		SelfBeanSuper selfBeanSuper = (SelfBeanSuper) context.getBean("selfBeanSuper");
+		selfBeanSuper.test();
 
 	}
 
