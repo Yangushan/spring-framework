@@ -60,7 +60,9 @@ public class SimpleInstantiationStrategy implements InstantiationStrategy {
 	@Override
 	public Object instantiate(RootBeanDefinition bd, @Nullable String beanName, BeanFactory owner) {
 		// Don't override the class with CGLIB if no overrides.
+		// 判断当前beanDefinition中，是否有@Lookup注解的方法
 		if (!bd.hasMethodOverrides()) {
+			// 没有使用
 			Constructor<?> constructorToUse;
 			synchronized (bd.constructorArgumentLock) {
 				constructorToUse = (Constructor<?>) bd.resolvedConstructorOrFactoryMethod;
@@ -87,7 +89,7 @@ public class SimpleInstantiationStrategy implements InstantiationStrategy {
 			// 这里使用构造方法去new bean
 			return BeanUtils.instantiateClass(constructorToUse);
 		}
-		else {
+		else { // 如果有需要生成cglib的子类，其实就是先给这个bean创建一个代理对象
 			// Must generate CGLIB subclass.
 			return instantiateWithMethodInjection(bd, beanName, owner);
 		}

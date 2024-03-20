@@ -81,6 +81,7 @@ public class CglibSubclassingInstantiationStrategy extends SimpleInstantiationSt
 	protected Object instantiateWithMethodInjection(RootBeanDefinition bd, @Nullable String beanName, BeanFactory owner,
 			@Nullable Constructor<?> ctor, Object... args) {
 
+		// 创建一个代理对象
 		// Must generate CGLIB subclass...
 		return new CglibSubclassCreator(bd, owner).instantiate(ctor, args);
 	}
@@ -132,6 +133,10 @@ public class CglibSubclassingInstantiationStrategy extends SimpleInstantiationSt
 			// SPR-10785: set callbacks directly on the instance instead of in the
 			// enhanced class (via the Enhancer) in order to avoid memory leaks.
 			Factory factory = (Factory) instance;
+			// 当@Lookup的代理对象被执行的时候，会执行下面两个拦截器中的intercept方法
+			// LookupOverrideMethodInterceptor会走@Lookup的流程判断
+			// ReplaceOverrideMethodInterceptor的作用是当我们在xml中定义的bean，如果存在一个replace-with的一个注解，那么就会通过这个注解去先执行我们定义的方法
+			// 需要注意的是，如果被下面两个拦截器拦截到了以后，并不会调用原始方法，只会调用拦截器中的方法
 			factory.setCallbacks(new Callback[] {NoOp.INSTANCE,
 					new LookupOverrideMethodInterceptor(this.beanDefinition, this.owner),
 					new ReplaceOverrideMethodInterceptor(this.beanDefinition, this.owner)});
@@ -235,9 +240,11 @@ public class CglibSubclassingInstantiationStrategy extends SimpleInstantiationSt
 		@Override
 		public Object intercept(Object obj, Method method, Object[] args, MethodProxy mp) throws Throwable {
 			// Cast is safe, as CallbackFilter filters are used selectively.
+			// 拿到方法上@Lookup注解的信息
 			LookupOverride lo = (LookupOverride) getBeanDefinition().getMethodOverrides().getOverride(method);
 			Assert.state(lo != null, "LookupOverride not found");
 			Object[] argsToUse = (args.length > 0 ? args : null);  // if no-arg, don't insist on args at all
+			// 如果我们的@Lookup上指定了beanName，则直接返回这个beanName对应的对象
 			if (StringUtils.hasText(lo.getBeanName())) {
 				Object bean = (argsToUse != null ? this.owner.getBean(lo.getBeanName(), argsToUse) :
 						this.owner.getBean(lo.getBeanName()));
@@ -245,6 +252,7 @@ public class CglibSubclassingInstantiationStrategy extends SimpleInstantiationSt
 				return (bean.equals(null) ? null : bean);
 			}
 			else {
+				// 如果没有指定，则拿到方法的返回值，通过返回值的类型来拿bean
 				// Find target bean matching the (potentially generic) method return type
 				ResolvableType genericReturnType = ResolvableType.forMethodReturnType(method);
 				return (argsToUse != null ? this.owner.getBeanProvider(genericReturnType).getObject(argsToUse) :
