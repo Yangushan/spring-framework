@@ -20,4 +20,13 @@
 
 <!--	测试autowired=constructor的情况-->
 	<bean id="c6" class="org.yangushan.service.constructor.C6" autowire="constructor"/>
+
+	<bean id="person" class="org.yangushan.service.Person"/>
+
+<!--	先把要进行替换的replacer进行注册-->
+	<bean id="myReplacer" class="org.yangushan.service.constructor.MyReplacer"/>
+	<!-- 然后在这里设置我们哪个方法进行replace-->
+	<bean id="replaceTest" class="org.yangushan.service.constructor.ReplacedTest">
+		<replaced-method name="test" replacer="myReplacer"/>
+	</bean>
 </beans>

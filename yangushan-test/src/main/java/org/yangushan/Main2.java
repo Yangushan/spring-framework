@@ -5,10 +5,10 @@ import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 import org.springframework.core.annotation.Order;
 import org.yangushan.service.*;
-import org.yangushan.service.constructor.C6;
-import org.yangushan.service.constructor.C7;
+import org.yangushan.service.constructor.*;
 import org.yangushan.service.qualifier.LoadBalanceTestBean;
 
 public class Main2 {
@@ -32,8 +32,17 @@ public class Main2 {
 		// 这里也可以直接指定具体的某个index的bean对象是多少，但是我们没有这个超过4个参数个数的符合的构造方法，所以会报错
 //		beanDefinition7.getConstructorArgumentValues().addIndexedArgumentValue(3, new Student());
 		context1.registerBeanDefinition("c7", beanDefinition7);
-
 		context1.refresh();
+
+		// 因为我们在lookupTest这个bean中使用了@Lookup注解，所以这里返回的是它的代理对象
+		LookupTest lookupTest = (LookupTest) context1.getBean("lookupTest");
+		System.out.println(lookupTest);
+		lookupTest.test();
+
+		//测试ReplaceTest
+//		ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("spring.xml");
+//		ReplacedTest replacedTest = (ReplacedTest) context.getBean("replaceTest");
+//		replacedTest.test();
 
 	}
 
