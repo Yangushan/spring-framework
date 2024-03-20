@@ -73,6 +73,28 @@ public class Main {
 		// 测试@Resource注入流程的类
 		((ResourceTestBean)context.getBean("resourceTestBean")).test();
 
+		// 测试原型bean之间的依赖注入，会报错
+		System.out.println(context.getBean("a3"));
+
+
+
+		// 测试@lazy的循环依赖注入之中导致的问题
+		// 我们可以控制让线程1走到getSingleton设置完二级缓存那一步骤
+		// 然后这个时候控制线程2去getBean则会因为getSingleton提前返回了不完整的bean对象导致问题
+		// 因为这个时候还是一个半成品对象，所以很可能里面的什么属性赋值都没有完成
+		// 如果这个时候我们调用了一个没有完成的属性去toString则会导致空指针
+		// 这不止这一个问题，很可能还会导致我们其他的问题
+		new Thread(() -> {
+			((A4)context.getBean("a4")).test();
+        }).start();
+		new Thread(() -> {
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
+			((A4)context.getBean("a4")).test();
+		}).start();
 	}
 
 }

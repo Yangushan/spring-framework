@@ -15,6 +15,7 @@ dependencies {
     implementation project(":spring-beans")
     implementation project(":spring-context")
     implementation ("javax.annotation:javax.annotation-api")
+    implementation ("org.aspectj:aspectjweaver")
 }
 
 test {
