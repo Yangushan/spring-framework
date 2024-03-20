@@ -806,6 +806,7 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	}
 
 	/**
+	 * 设置这个值表示在推断构造方法的过程中，是否允许最小权重的数据冲突，如果是true就允许，否则就不允许表示只能有一个最小权重的构造方法
 	 * Return whether to resolve constructors in lenient mode or in strict mode.
 	 */
 	public boolean isLenientConstructorResolution() {

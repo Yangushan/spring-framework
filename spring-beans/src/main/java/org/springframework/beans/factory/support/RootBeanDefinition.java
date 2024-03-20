@@ -95,11 +95,18 @@ public class RootBeanDefinition extends AbstractBeanDefinition {
 	/** Common lock for the four constructor fields below. */
 	final Object constructorArgumentLock = new Object();
 
-	/** Package-visible field for caching the resolved constructor or factory method. */
+	/**
+	 * 这个是在推断构造方法的时候使用的，会缓存我们创建bean的时候使用了哪个构造方法
+	 * 为什么需要缓存？因为如果我们是一个原型bean,那么这个缓存就有用处了
+	 * Package-visible field for caching the resolved constructor or factory method.
+	 */
 	@Nullable
 	Executable resolvedConstructorOrFactoryMethod;
 
-	/** Package-visible field that marks the constructor arguments as resolved. */
+	/**
+	 * 这个和上面的field搭配使用，如果是false表达是一个无参构造方法，true就是有参
+	 * Package-visible field that marks the constructor arguments as resolved.
+	 */
 	boolean constructorArgumentsResolved = false;
 
 	/** Package-visible field for caching fully resolved constructor arguments. */

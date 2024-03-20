@@ -309,6 +309,7 @@ public class MethodInvoker {
 	public static int getTypeDifferenceWeight(Class<?>[] paramTypes, Object[] args) {
 		int result = 0;
 		for (int i = 0; i < paramTypes.length; i++) {
+			// 如果类型不匹配返回最大值
 			if (!ClassUtils.isAssignableValue(paramTypes[i], args[i])) {
 				return Integer.MAX_VALUE;
 			}
@@ -316,10 +317,12 @@ public class MethodInvoker {
 				Class<?> paramType = paramTypes[i];
 				Class<?> superClass = args[i].getClass().getSuperclass();
 				while (superClass != null) {
+					//如果类型匹配但是是父类+2
 					if (paramType.equals(superClass)) {
 						result = result + 2;
 						superClass = null;
 					}
+					// 如果类型匹配，但是是父类的父类+2
 					else if (ClassUtils.isAssignable(paramType, superClass)) {
 						result = result + 2;
 						superClass = superClass.getSuperclass();
@@ -328,6 +331,7 @@ public class MethodInvoker {
 						superClass = null;
 					}
 				}
+				// 如果是接口+1
 				if (paramType.isInterface()) {
 					result = result + 1;
 				}

@@ -593,7 +593,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		if (mbd.isSingleton()) {
 			instanceWrapper = this.factoryBeanInstanceCache.remove(beanName);
 		}
-		// 一般流程会走下面的逻辑，创建bean的实例，会走推断构造方法逻辑
+		// 一般流程会走下面的逻辑，创建bean的实例，会走推断构造方法逻辑(重点关注下Spring选择构造方法的流程)
 		// 实例化
 		if (instanceWrapper == null) {
 			instanceWrapper = createBeanInstance(beanName, mbd, args);
@@ -1236,6 +1236,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	}
 
 	/**
+	 * Spring推断构造方法的流程
 	 * Create a new instance for the specified bean, using an appropriate instantiation strategy:
 	 * factory method, constructor autowiring, or simple instantiation.
 	 * @param beanName the name of the bean
@@ -1256,48 +1257,75 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 					"Bean class isn't public, and non-public access not allowed: " + beanClass.getName());
 		}
 
+		// 在Spring中提供了一个机制，如果我们的BeanDefinition中设置了这个instanceSupplier参数
+		// 那么spring会使用这个参数的方法来创建bean，这个有点类似于前面看到的instantiationAware调用postProcessBeforeInstantiation
+		// 也是spring给我们自己留下的口子，让我们自己去new bean
 		Supplier<?> instanceSupplier = mbd.getInstanceSupplier();
 		if (instanceSupplier != null) {
 			return obtainFromSupplier(instanceSupplier, beanName);
 		}
 
+		// @Bean处理创建bean的逻辑
 		if (mbd.getFactoryMethodName() != null) {
 			return instantiateUsingFactoryMethod(beanName, mbd, args);
 		}
 
 		// Shortcut when re-creating the same bean...
+		// 表示是否有缓存
 		boolean resolved = false;
+		// 表示我们的构造方法是否有参数，false就表示是一个无参构造方法
 		boolean autowireNecessary = false;
+		// 如果我们的参数为空才判断（需要注意的是如果我们自己指定了参数就不会进入这个方法也就不会有缓存）
 		if (args == null) {
 			synchronized (mbd.constructorArgumentLock) {
+				// resolvedConstructorOrFactoryMethod参数会存放我们缓存下来具体的某个构造方法，所以不为空也就表示有缓存
 				if (mbd.resolvedConstructorOrFactoryMethod != null) {
 					resolved = true;
+					// constructorArgumentsResolved表示是否是一个无参数构造方法
 					autowireNecessary = mbd.constructorArgumentsResolved;
 				}
 			}
 		}
+		// 如果有缓存了，知道具体指定哪个构造方法创建
 		if (resolved) {
+			// 区分一下无参和有参流程
+			// 使用有参构造方法创建对象
 			if (autowireNecessary) {
 				return autowireConstructor(beanName, mbd, null, null);
 			}
-			else {
+			else { // 使用无参数构造方法创建对象
 				return instantiateBean(beanName, mbd);
 			}
 		}
 
 		// Candidate constructors for autowiring?
+		// 推断可以使用的构造方法
+		/**
+		 * 这个最终使用的是我们AutowiredAnnotationBeanPostProcessor中的流程
+		 * 可以根据ctors返回的数据来判断业务
+		 * 	如果返回的不为空，则可能说明我们我们存在@Autowired注解，又或者我们原本的构造方法只有一个并且是有参数的
+		 * 	否则为null，则可能是首先我们不存在@Autowired注解的构造方法，并且我们原本的构造方法有多个又或者只有一个构造方法但是又不是有参数构造方法
+		 */
 		Constructor<?>[] ctors = determineConstructorsFromBeanPostProcessors(beanClass, beanName);
+		/**
+		 * 如果ctors表示推断出来了，则表示我们存在@Autowired注解或者我们的有一个唯一的有参数构造方法，则走下面注入构造方法的流程
+		 * 如果没有推断出来则表示我们有多个构造方法和一个无参数构造方法，并且AUTOWIRE_CONSTRUCTOR是这个，所以也需要走这个流程
+		 * 又或者我们在BeanDefinition中设置了constructorArgumentValues，也就是我们在BeanDefinition指定了我们的构造方法的参数和args类似
+		 * 又或者我们指定了具体的构造方法参数
+		 */
 		if (ctors != null || mbd.getResolvedAutowireMode() == AUTOWIRE_CONSTRUCTOR ||
 				mbd.hasConstructorArgumentValues() || !ObjectUtils.isEmpty(args)) {
 			return autowireConstructor(beanName, mbd, ctors, args);
 		}
 
+		// 上面的流程前提是ctors不为空，如果为空则会走这里的流程
 		// Preferred constructors for default construction?
 		ctors = mbd.getPreferredConstructors();
 		if (ctors != null) {
 			return autowireConstructor(beanName, mbd, ctors, null);
 		}
 
+		// 如果上面都为空，那么只有一个情况我们只有一个无参数构造方法，所以走到这用无参数构造方法来new bean
 		// No special handling: simply use no-arg constructor.
 		return instantiateBean(beanName, mbd);
 	}
@@ -1368,6 +1396,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			throws BeansException {
 
 		if (beanClass != null && hasInstantiationAwareBeanPostProcessors()) {
+			// 循环调用系统中的SmartInstantiationAwareBeanPostProcessor列表，调用推断构造方法
+			// 主要看子类AutowiredAnnotationBeanPostProcessor，也就是我们@Autowired, @Value的哪个BeanPostProcessor
 			for (SmartInstantiationAwareBeanPostProcessor bp : getBeanPostProcessorCache().smartInstantiationAware) {
 				Constructor<?>[] ctors = bp.determineCandidateConstructors(beanClass, beanName);
 				if (ctors != null) {
@@ -1392,7 +1422,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 						(PrivilegedAction<Object>) () -> getInstantiationStrategy().instantiate(mbd, beanName, this),
 						getAccessControlContext());
 			}
-			else {
+			else { // 一般情况下走这个流程
 				beanInstance = getInstantiationStrategy().instantiate(mbd, beanName, this);
 			}
 			BeanWrapper bw = new BeanWrapperImpl(beanInstance);
