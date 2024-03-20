@@ -74,13 +74,24 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	private static final int SUPPRESSED_EXCEPTIONS_LIMIT = 100;
 
 
-	/** Cache of singleton objects: bean name to bean instance. */
+	/**
+	 * 存放的是一个完成的bean的一个单例池缓存，也就是所谓的一级缓存
+	 * Cache of singleton objects: bean name to bean instance.
+	 */
 	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
 
-	/** Cache of singleton factories: bean name to ObjectFactory. */
+	/**
+	 * 依赖注入中使用到的三级缓存，存放的value是一个lambda表达式，在调用getObject方法的时候会执行
+	 * 这个lambda表达式主要是对AOP进行一个处理，判断是返回原始类型还是AOP类型，这样可以做到提前AOP
+	 * Cache of singleton factories: bean name to ObjectFactory.
+	 */
 	private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
 
-	/** Cache of early singleton objects: bean name to bean instance. */
+	/**
+	 * 依赖注入中使用到的二级缓存，存放的是一个半成品的bean，也就是在三级缓存中通过lambda表达式得到的对象
+	 * 可能是一个AOP的代理对象，也可能是一个原始对象，只不过这个时候还没有完成bean的初始化流程
+	 * Cache of early singleton objects: bean name to bean instance.
+	 */
 	private final Map<String, Object> earlySingletonObjects = new ConcurrentHashMap<>(16);
 
 	/** Set of registered singletons, containing the bean names in registration order. */
@@ -185,19 +196,25 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	@Nullable
 	protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 		// Quick check for existing instance without full singleton lock
+		// 先从单例池中拿，没有从二级缓存拿，最后还是没有增加锁，进入到三级缓存中
+		// 三级缓存的流程因为是一个lambda表达式，每次调用会创建不同的bean对象就不符合单例原则
+		// 所以必须增加锁，保证只有一个线程会去调用三级缓存中的getObject方法
 		Object singletonObject = this.singletonObjects.get(beanName);
 		if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
 			singletonObject = this.earlySingletonObjects.get(beanName);
 			if (singletonObject == null && allowEarlyReference) {
 				synchronized (this.singletonObjects) {
 					// Consistent creation of early reference within full singleton lock
+					// double check
 					singletonObject = this.singletonObjects.get(beanName);
 					if (singletonObject == null) {
 						singletonObject = this.earlySingletonObjects.get(beanName);
 						if (singletonObject == null) {
 							ObjectFactory<?> singletonFactory = this.singletonFactories.get(beanName);
 							if (singletonFactory != null) {
+								// 调用三级缓存中的lambda表达式，lambda表达式主要会判断是否需要AOP来返回代理对象还是三级缓存中的原始对象
 								singletonObject = singletonFactory.getObject();
+								// 从三级缓存中删除没用了，加入到二级缓存
 								this.earlySingletonObjects.put(beanName, singletonObject);
 								this.singletonFactories.remove(beanName);
 							}
@@ -231,7 +248,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 				if (logger.isDebugEnabled()) {
 					logger.debug("Creating shared instance of singleton bean '" + beanName + "'");
 				}
-				// 创建之前做一个正在创建的标记
+				// 创建之前，做一个正在创建的标记
 				beforeSingletonCreation(beanName);
 				boolean newSingleton = false;
 				boolean recordSuppressedExceptions = (this.suppressedExceptions == null);

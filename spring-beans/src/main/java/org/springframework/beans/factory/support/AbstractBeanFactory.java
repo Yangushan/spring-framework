@@ -258,8 +258,17 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		String beanName = transformedBeanName(name);
 		Object beanInstance;
 
-		// Eagerly check singleton cache for manually registered singletons.
-		// 从单例池里面拿数据
+		// Eagerly check singleton cache for manually registered singletons
+		// 从单例池里面拿数据，但是这个方法因为也会从二级缓存里面直接返回数据，所以很可能是一个半成品数据导致报错
+		/**
+		 * 因为提前从二级缓存返回数据可能会导致问题
+		 * 假如我们有两个对象A，B，相互依赖注入，但是特别的是这两个对象都被打上了@Lazy的注解，所以一开始spring启动不会进行初始化
+		 * 这个时候线程1，调用了getBean A，然后A开始初始化并且为属性赋值，也就找到了B，
+		 * 	这个时候发现A是循环依赖了就走到了getSingleton的第二步，也就是放入到二级缓存之中，假如这个时候线程停止了进行了上下文切换，A这个时候其实还没有完成真正的属性赋值
+		 * 这个时候线程2进来了，然使用了getBean A方法，就走到了这个getSingleton的流程里面
+		 * 	因为在线程1之中我们已经给二级缓存设置属性了，所以线程2拿到的A是一个不完整的对象，也就是半成品对象，很可能里面的属性甚至都没进行赋值操作
+		 * 如果这个时候我们去使用a里面的b很可能就会有空指针的问题
+		 */
 		Object sharedInstance = getSingleton(beanName);
 		if (sharedInstance != null && args == null) {
 			if (logger.isTraceEnabled()) {
@@ -1886,6 +1895,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @return {@code true} if actually removed, {@code false} otherwise
 	 */
 	protected boolean removeSingletonIfCreatedForTypeCheckOnly(String beanName) {
+		// 如果这个bean已经创建了，从单例池各种缓存中删掉，返回true，否则返回false
 		if (!this.alreadyCreated.contains(beanName)) {
 			removeSingleton(beanName);
 			return true;

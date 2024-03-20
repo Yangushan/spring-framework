@@ -1362,6 +1362,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				result = doResolveDependency(descriptor, requestingBeanName, autowiredBeanNames, typeConverter);
 			}
 			// 如果包含了则直接返回，@Lazy会产生代理对象，会在真正使用的时候才去实例化真正的bean
+			// 所以如果我们有依赖注入的时候，使用@Lazy可以缓解依赖注入的问题，因为并不会真正的去拿bean，而是直接返回代理对象
 			return result;
 		}
 	}

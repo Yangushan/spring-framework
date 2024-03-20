@@ -300,7 +300,7 @@ public class CommonAnnotationBeanPostProcessor extends InitDestroyAnnotationBean
 	}
 
 	/**
-	 * 在实例化之前调用
+	 * 在实例化之后属性填充之前调用
 	 * @param beanDefinition the merged bean definition for the bean
 	 * @param beanType the actual type of the managed bean instance
 	 * @param beanName the name of the bean
@@ -712,6 +712,7 @@ public class CommonAnnotationBeanPostProcessor extends InitDestroyAnnotationBean
 		@Override
 		protected Object getResourceToInject(Object target, @Nullable String requestingBeanName) {
 			// 如果是lazy的bean则使用lazy的流程构建代理对象，否则调用getResource
+			// 所以@Lazy注解也可以缓解通过@resource产生的循环依赖问题，因为不会去拿真正的bean,而是直接返回代理对象
 			return (this.lazyLookup ? buildLazyResourceProxy(this, requestingBeanName) :
 					getResource(this, requestingBeanName));
 		}

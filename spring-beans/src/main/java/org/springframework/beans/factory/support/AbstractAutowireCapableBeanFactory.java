@@ -512,7 +512,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// clone the bean definition in case of a dynamically resolved Class
 		// which cannot be stored in the shared merged bean definition.
 		/**
-		 * 去加在我们beanName对应的那个class
+		 * 去加载我们beanName对应的那个class
 		 */
 		Class<?> resolvedClass = resolveBeanClass(mbd, beanName);
 		if (resolvedClass != null && !mbd.hasBeanClass() && mbd.getBeanClassName() != null) {
@@ -623,7 +623,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		// Eagerly cache singletons to be able to resolve circular references
 		// even when triggered by lifecycle interfaces like BeanFactoryAware.
-		// 处理循环依赖的问题
+		// 处理循环依赖的问题，不管是否需要处理循环依赖都会走到这个流程，也就是都会加入到三级缓存当中
+		// 判断是否是单例，是否支持循环依赖，是否正在创建
 		boolean earlySingletonExposure = (mbd.isSingleton() && this.allowCircularReferences &&
 				isSingletonCurrentlyInCreation(beanName));
 		if (earlySingletonExposure) {
@@ -631,6 +632,11 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				logger.trace("Eagerly caching bean '" + beanName +
 						"' to allow for resolving potential circular references");
 			}
+			// 如果另外的bean在单例池找不到，则加入到三级缓存中，从二级缓存中删除
+			// 需要注意：这里的三级缓存存放的并不是某个具体的bean，而是一个lambda表达式，会在getSingleton方法中被调用
+			// 这个时候我们的bean对象只是刚刚被初始化，并且调用了MergeBeanPostProcessor的方法
+			// 还没开始属性填充和初始化
+			// 这个lambda表达的作用主要判断是否需要AOP，如果需要则返回代理对象否则返回这个bean的原始对象
 			addSingletonFactory(beanName, () -> getEarlyBeanReference(beanName, mbd, bean));
 		}
 
@@ -646,6 +652,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			 * 初始化（调用InitializingBean的方法和InitMethodName）
 			 * 初始化后BeanPostProcessor的after）
 			 */
+			// 这里需要注意的是，如果是依赖注入导致的前置AOP，那么这里返回的对象并不是AOP的代理对象而是原始对象
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
 		}
 		catch (Throwable ex) {
@@ -658,20 +665,46 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 
+		// 当实例化完成之后，并且设置了一些关于循环依赖的东西
 		if (earlySingletonExposure) {
+			// 从单例池或者二级缓存这些地方拿数据
 			Object earlySingletonReference = getSingleton(beanName, false);
 			if (earlySingletonReference != null) {
+				// 如果拿到了数据，则把我们上面初始化之后的数据改成这个数据
+				/**
+				 * 如果exposedObject=原来的bean对象，就说明没有在初始化过程中被BeanPostProcessor的after或者before流程变更对象，也就是没有因为其他流程变成代理对象
+				 * 那么这个时候我们只需要考虑
+					 * 因为在上面的流程中，依赖注入会把代理对象提前进行AOP而不是放在初始化之中
+					 * 而在我们原先的BeanPostProcessor流程中after对象产生的AOP这个时候就不会返回代理对象而是返回的原始的Bean对象（可以看AbstractAutoProxyCreator流程）
+					 * 所以这里需要做一个重新赋值的流程；
+				 */
 				if (exposedObject == bean) {
 					exposedObject = earlySingletonReference;
 				}
+				// 但是如果不相等，也就是在初始化的过程中发生了一下代理变更了bean, 则判断是否有其他的bean依赖了这个bean
 				else if (!this.allowRawInjectionDespiteWrapping && hasDependentBean(beanName)) {
+					// 拿到这个beanName被哪些类依赖了
 					String[] dependentBeans = getDependentBeans(beanName);
 					Set<String> actualDependentBeans = new LinkedHashSet<>(dependentBeans.length);
 					for (String dependentBean : dependentBeans) {
+						/**
+						 * 判断这个依赖的bean是否在创建完成的bean列表中，如果存在则返回true（从各个单例池缓存中删掉）
+						 * 否则返回false，也就是会走下面的逻辑
+						 * 也就是依赖的bean不能在单例池中，如果存在则会加入到actualDependentBeans列表
+						 * 也就是如果这个时候有依赖的bean，但是这些bean，bean没有初始化完成则不会报错否则会报错
+						 */
+						/**
+						 * 这也是为什么有时候循环依赖会报错有时候不会报错的原因，是和先加载哪个bean是有关系的
+						 * 假如我们的AB两个bean循环依赖，并且A中有一个@Async就会触发exposedObject ！= bean的逻辑
+						 * 如果我们是先加载的A，然后通过A去依赖B，B又去依赖A，把A提前AOP了，然后B加载完了，这个时候A走到这个逻辑，发现B已经是一个完整的bean，就会报错
+						 * 但是如果我们先加载的B，然后通过B去依赖A，A又去依赖B，这个时候是B提前AOP，所以A走的是正常的AOP流程并不会走到这个流程上，B因为没有使用@Async
+						 * 	所以B的判断是exposedObject == bean，不会走到这个流程，所以可以正常加载
+						 */
 						if (!removeSingletonIfCreatedForTypeCheckOnly(dependentBean)) {
 							actualDependentBeans.add(dependentBean);
 						}
 					}
+					// actualDependentBeans列表不为空，在提示循环依赖错误
 					if (!actualDependentBeans.isEmpty()) {
 						throw new BeanCurrentlyInCreationException(beanName,
 								"Bean with name '" + beanName + "' has been injected into other beans [" +
@@ -1011,7 +1044,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	protected Object getEarlyBeanReference(String beanName, RootBeanDefinition mbd, Object bean) {
 		Object exposedObject = bean;
 		if (!mbd.isSynthetic() && hasInstantiationAwareBeanPostProcessors()) {
+			// 对bean进行一个提前的AOP构造
 			for (SmartInstantiationAwareBeanPostProcessor bp : getBeanPostProcessorCache().smartInstantiationAware) {
+				// 这里和我们传统的正常的一个bean对象的AOP流程不一样
+				// 正常的AOP走的是BeanPostProcessor的after方法，这里走的是这个方法
 				exposedObject = bp.getEarlyBeanReference(exposedObject, beanName);
 			}
 		}
