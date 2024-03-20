@@ -449,23 +449,28 @@ class ConstructorResolver {
 		Class<?> factoryClass;
 		boolean isStatic;
 
+		// 这是我们注入@Bean的时候，会给我们BeanDefinition设置的一个bean对应的一个factory
+		// 如果我们是在Appliction.java中使用了这个@Bean,那么这里的factoryBeanName就是我们当前所在bean的名字也就是application
 		String factoryBeanName = mbd.getFactoryBeanName();
 		if (factoryBeanName != null) {
 			if (factoryBeanName.equals(beanName)) {
 				throw new BeanDefinitionStoreException(mbd.getResourceDescription(), beanName,
 						"factory-bean reference points back to the same bean definition");
 			}
+			// 拿到factoryBean对应的bean
 			factoryBean = this.beanFactory.getBean(factoryBeanName);
 			if (mbd.isSingleton() && this.beanFactory.containsSingleton(beanName)) {
 				throw new ImplicitlyAppearedSingletonException();
 			}
+			// 注册一下两者的依赖关系
 			this.beanFactory.registerDependentBean(factoryBeanName, beanName);
 			factoryClass = factoryBean.getClass();
 			isStatic = false;
 		}
 		else {
+			// 如果上面为空，那么可能我们@Bean方法是一个static的方法，如果是static的就会设置beanClass，也就是我们上面的Application.class
 			// It's a static factory method on the bean class.
-			if (!mbd.hasBeanClass()) {
+			if (!mbd.hasBeanClass()) { // 如果这个也没有则报错
 				throw new BeanDefinitionStoreException(mbd.getResourceDescription(), beanName,
 						"bean definition declares neither a bean class nor a factory-bean reference");
 			}
@@ -478,10 +483,12 @@ class ConstructorResolver {
 		ArgumentsHolder argsHolderToUse = null;
 		Object[] argsToUse = null;
 
+		// 如果我们的@Bean上面有参数
 		if (explicitArgs != null) {
 			argsToUse = explicitArgs;
 		}
 		else {
+			// 没有参数的流程和我们的普通类找构造器的流程差不多，也是判断有没有缓存
 			Object[] argsToResolve = null;
 			synchronized (mbd.constructorArgumentLock) {
 				factoryMethodToUse = (Method) mbd.resolvedConstructorOrFactoryMethod;
@@ -498,12 +505,15 @@ class ConstructorResolver {
 			}
 		}
 
+		// 如果没有缓存，也没有设置指定的参数
 		if (factoryMethodToUse == null || argsToUse == null) {
 			// Need to determine the factory method...
 			// Try all methods with this name to see if they match the given arguments.
 			factoryClass = ClassUtils.getUserClass(factoryClass);
 
 			List<Method> candidates = null;
+			// 这个判断的意思是，如果我们有一个bean，他有两个注入方法，并且名字都一样，比如我们有两个@Bean方法都叫做，userService
+			// 那么这里的这个唯一就是false
 			if (mbd.isFactoryMethodUnique) {
 				if (factoryMethodToUse == null) {
 					factoryMethodToUse = mbd.getResolvedFactoryMethod();
@@ -536,6 +546,7 @@ class ConstructorResolver {
 				}
 			}
 
+			// 先按照public排序，之后按照参数个数排序
 			if (candidates.size() > 1) {  // explicitly skip immutable singletonList
 				candidates.sort(AutowireUtils.EXECUTABLE_COMPARATOR);
 			}
@@ -545,6 +556,7 @@ class ConstructorResolver {
 			int minTypeDiffWeight = Integer.MAX_VALUE;
 			Set<Method> ambiguousFactoryMethods = null;
 
+			// 这里的流程大致和推断构造方法的流程一致
 			int minNrOfArgs;
 			if (explicitArgs != null) {
 				minNrOfArgs = explicitArgs.length;
@@ -567,6 +579,7 @@ class ConstructorResolver {
 			for (Method candidate : candidates) {
 				int parameterCount = candidate.getParameterCount();
 
+				// 参数个数小于最小参数限制
 				if (parameterCount >= minNrOfArgs) {
 					ArgumentsHolder argsHolder;
 
@@ -602,6 +615,7 @@ class ConstructorResolver {
 						}
 					}
 
+					// 计算权重
 					int typeDiffWeight = (mbd.isLenientConstructorResolution() ?
 							argsHolder.getTypeDifferenceWeight(paramTypes) : argsHolder.getAssignabilityWeight(paramTypes));
 					// Choose this factory method if it represents the closest match.

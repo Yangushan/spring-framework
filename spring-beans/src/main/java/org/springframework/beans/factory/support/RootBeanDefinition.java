@@ -67,6 +67,10 @@ public class RootBeanDefinition extends AbstractBeanDefinition {
 
 	boolean allowCaching = true;
 
+	/**
+	 * 当我们在使用@Bean注入一个bean的时候
+	 * 如果有两个方法名字一摸一样，的@Bean，那么这里就会是false,因为不是唯一的，否则唯一的就是True
+	 */
 	boolean isFactoryMethodUnique;
 
 	@Nullable
