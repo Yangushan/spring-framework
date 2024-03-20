@@ -6,6 +6,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.yangushan.service.Person;
+import org.yangushan.service.constructor.C6;
 
 /**
  * created by yangushan

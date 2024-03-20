@@ -1,9 +1,16 @@
 package org.yangushan;
 
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.yangushan.service.*;
+import org.yangushan.service.constructor.C6;
 import org.yangushan.service.qualifier.LoadBalanceTestBean;
+
+import java.util.function.Supplier;
 
 public class Main {
 
@@ -95,6 +102,17 @@ public class Main {
 			}
 			((A4)context.getBean("a4")).test();
 		}).start();
+
+
+		// 测试注入的问题，由于比较特殊，所以注入方式不太一样
+		AnnotationConfigApplicationContext context1 = new AnnotationConfigApplicationContext();
+		context1.register(AppConfig.class);
+		AbstractBeanDefinition beanDefinition = BeanDefinitionBuilder.genericBeanDefinition().getBeanDefinition();
+		beanDefinition.setBeanClass(C6.class);
+		beanDefinition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_CONSTRUCTOR);
+		context1.registerBeanDefinition("c6", beanDefinition);
+		context1.register();
+
 	}
 
 }

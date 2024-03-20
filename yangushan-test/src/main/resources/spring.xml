@@ -17,4 +17,7 @@
 
 	<!--  这个bean继承了抽象的user，所以会继承它的一些属性，比如scope，所以这里的user2也是一个原型	-->
 	<bean id="user2" class="org.yangushan.service.User" parent="user"/>
+
+<!--	测试autowired=constructor的情况-->
+	<bean id="c6" class="org.yangushan.service.constructor.C6" autowire="constructor"/>
 </beans>
