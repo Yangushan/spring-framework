@@ -55,6 +55,9 @@ final class ConfigurationClass {
 	@Nullable
 	private String beanName;
 
+	/**
+	 * 存放当前配置类是因为哪些类被导入进来的
+	 */
 	private final Set<ConfigurationClass> importedBy = new LinkedHashSet<>(1);
 
 	private final Set<BeanMethod> beanMethods = new LinkedHashSet<>();

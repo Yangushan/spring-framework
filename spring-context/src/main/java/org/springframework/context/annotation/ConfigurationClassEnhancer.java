@@ -73,6 +73,9 @@ import org.springframework.util.ReflectionUtils;
 class ConfigurationClassEnhancer {
 
 	// The callbacks to use. Note that these callbacks must be stateless.
+	/**
+	 * 存放我们给full配置类生成的代理类的callback方法数组
+	 */
 	private static final Callback[] CALLBACKS = new Callback[] {
 			new BeanMethodInterceptor(),
 			new BeanFactoryAwareMethodInterceptor(),
@@ -106,6 +109,7 @@ class ConfigurationClassEnhancer {
 			}
 			return configClass;
 		}
+		// 给我们的配置类做一个代理，主要看createClass里面的CALLBACKS属性
 		Class<?> enhancedClass = createClass(newEnhancer(configClass, classLoader));
 		if (logger.isTraceEnabled()) {
 			logger.trace(String.format("Successfully enhanced %s; enhanced class name is: %s",
@@ -266,6 +270,7 @@ class ConfigurationClassEnhancer {
 
 
 	/**
+	 * 如果我们在一个@Configuration full类中，注入了@Bean，那么就会经过这个代理类拦截器的Intercept方法
 	 * Intercepts the invocation of any {@link Bean}-annotated methods in order to ensure proper
 	 * handling of bean semantics such as scoping and AOP proxying.
 	 * @see Bean
@@ -274,6 +279,7 @@ class ConfigurationClassEnhancer {
 	private static class BeanMethodInterceptor implements MethodInterceptor, ConditionalCallback {
 
 		/**
+		 * 当我们在一个full configuration中注入的@Bean method的时候，会经过这个拦截器
 		 * Enhance a {@link Bean @Bean} method to check the supplied BeanFactory for the
 		 * existence of this bean object.
 		 * @throws Throwable as a catch-all for any exception that may be thrown when invoking the
@@ -302,6 +308,7 @@ class ConfigurationClassEnhancer {
 			// proxy that intercepts calls to getObject() and returns any cached bean instance.
 			// This ensures that the semantics of calling a FactoryBean from within @Bean methods
 			// is the same as that of referring to a FactoryBean within XML. See SPR-6602.
+			// 这里是FactoryBean的逻辑
 			if (factoryContainsBean(beanFactory, BeanFactory.FACTORY_BEAN_PREFIX + beanName) &&
 					factoryContainsBean(beanFactory, beanName)) {
 				Object factoryBean = beanFactory.getBean(BeanFactory.FACTORY_BEAN_PREFIX + beanName);
@@ -314,6 +321,11 @@ class ConfigurationClassEnhancer {
 				}
 			}
 
+			// 这个判断的意思是，当我们在执行@Bean这个方法是否就是它本身
+			// 什么意思？我们在执行@Bean这个方法创建bean对象有两种情况，一种是Spring启动的时候帮我们调用这个方法去创建对象
+			// 还有一种是我们在其他的方法中通过调用这个方法拿到bean对象
+			// 所以这里面就会判断，你当前执行这个@Bean方法是否是它自己，如果是它自己需要创建对象，则直接调用原本我们自己写的哪个@Bean方法
+			// 如果我们的方法并不是它自己，也就是方法名字参数都不想等，是其他方法在调用，那么这个时候就会走下面的逻辑
 			if (isCurrentlyInvokedFactoryMethod(beanMethod)) {
 				// The factory is calling the bean method in order to instantiate and register the bean
 				// (i.e. via a getBean() call) -> invoke the super implementation of the method to actually
@@ -328,9 +340,12 @@ class ConfigurationClassEnhancer {
 									"these container lifecycle issues; see @Bean javadoc for complete details.",
 							beanMethod.getDeclaringClass().getSimpleName(), beanMethod.getName()));
 				}
+				// 直接调用原本的对象
 				return cglibMethodProxy.invokeSuper(enhancedConfigInstance, beanMethodArgs);
 			}
 
+			// 如果不是@Bean method自己调用自己的情况走这个逻辑
+			// 这个逻辑就是通过getBean去拿数据，所以如果不是自己调用自己的情况如果bean已经存在则拿已经存在的数据否则创建一个新的数据
 			return resolveBeanReference(beanMethod, beanMethodArgs, beanFactory, beanName);
 		}
 
@@ -343,6 +358,7 @@ class ConfigurationClassEnhancer {
 			// the in-creation status to false in order to avoid an exception.
 			boolean alreadyInCreation = beanFactory.isCurrentlyInCreation(beanName);
 			try {
+				// 把当前beanName放入正在创建的列表中
 				if (alreadyInCreation) {
 					beanFactory.setCurrentlyInCreation(beanName, false);
 				}
@@ -358,6 +374,7 @@ class ConfigurationClassEnhancer {
 						}
 					}
 				}
+				// 通过getBean拿到数据，如果没有则会创建
 				Object beanInstance = (useArgs ? beanFactory.getBean(beanName, beanMethodArgs) :
 						beanFactory.getBean(beanName));
 				if (!ClassUtils.isAssignableValue(beanMethod.getReturnType(), beanInstance)) {

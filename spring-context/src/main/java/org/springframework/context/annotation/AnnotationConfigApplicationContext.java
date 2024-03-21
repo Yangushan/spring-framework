@@ -70,9 +70,9 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 		// BeanDefinition 的读取器，并且会注入一些基础的BeanFactoryPostProcessor和BeanPostProcessor
 		/**
 		 * 注册ConfigurationClassPostProcessor的BeanDefinition，它是一个BeanFactoryPostProcessor
-		 * 注册AutowiredAnnotationBeanPostProcessor，是用来处理我们@Autowired, @Value, @Inject的BeanPostProcessor
-		 * 注册CommonAnnotationBeanPostProcessor，用来处理我们的@Resource的BeanPostProcessor
-		 * 注册EventListenerMethodProcessor事件监听器（@EventListener注解）的BeanFactoryPostProcessor
+		 * 注册AutowiredAnnotationBeanPostProcessor的BeanDefinition，是用来处理我们@Autowired, @Value, @Inject的BeanPostProcessor
+		 * 注册CommonAnnotationBeanPostProcessor的BeanDefinition，用来处理我们的@Resource的BeanPostProcessor
+		 * 注册EventListenerMethodProcessor事件监听器的BeanDefinition（用来处理@EventListener注解）是一个BeanFactoryPostProcessor
 		 */
 		this.reader = new AnnotatedBeanDefinitionReader(this);
 		createAnnotatedBeanDefReader.end();

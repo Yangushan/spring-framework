@@ -584,10 +584,16 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				StartupStep beanPostProcess = this.applicationStartup.start("spring.context.beans.post-process");
 
 				// Invoke factory processors registered as beans in the context.
+				/**
+				 * 调用我们指定的BeanDefinitionRegistryPostProcessor和系统中注册的Registry的方法postProcessBeanDefinitionRegistry去注册BeanDefinition
+				 * 然后在调用父类BeanFactoryPostProcessors的postProcessBeanFactory方
+				 *
+				 * 核心是通过ConfigurationClassPostProcessor注册我们的bean
+				 */
 				invokeBeanFactoryPostProcessors(beanFactory); // scanner.scan()
 
 				// Register bean processors that intercept bean creation.
-				// 将上面一步扫描出来的BeanPostProcessor实例化并且排序，然后放入到BeanFactory的BeanPostProcessors列表中去
+				// 将上面一步扫描出来的所有BeanPostProcessor实例化并且排序，然后放入到BeanFactory的BeanPostProcessors列表中去
 				registerBeanPostProcessors(beanFactory);
 				beanPostProcess.end();
 
@@ -789,6 +795,9 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * <p>Must be called before singleton instantiation.
 	 */
 	protected void invokeBeanFactoryPostProcessors(ConfigurableListableBeanFactory beanFactory) {
+		// 核心，调用BeanFactoryPostProcessor和它子类的BeanDefinitionRegistryPostProcessor去注册bean数据
+		// 需要注意的是getBeanFactoryPostProcessors()这个方法的数据，如果我们在一开始创建Application的时候就设置了BeanFactoryPostProcessor那么这里就有数据，否则没有数据
+		// 这里并不是通过@Component这种方式添加的BeanFactoryPostProcessor，而是调用application.addBeanFactoryPostProcessor在还没refresh之前调用的方式
 		PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(beanFactory, getBeanFactoryPostProcessors());
 
 		// Detect a LoadTimeWeaver and prepare for weaving, if found in the meantime
@@ -801,6 +810,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	}
 
 	/**
+	 * 将BeanDefinition中所有BeanPostProcessor实例化并且排序，然后放入到BeanFactory的BeanPostProcessors列表中去
 	 * Instantiate and register all BeanPostProcessor beans,
 	 * respecting explicit order if given.
 	 * <p>Must be called before any instantiation of application beans.

@@ -75,6 +75,7 @@ abstract class ConfigurationClassUtils {
 
 
 	/**
+	 * 判断一个BeanDefinition是否是配置类
 	 * Check whether the given bean definition is a candidate for a configuration class
 	 * (or a nested component class declared within a configuration/component class,
 	 * to be auto-registered as well), and mark it accordingly.
@@ -90,6 +91,7 @@ abstract class ConfigurationClassUtils {
 			return false;
 		}
 
+		// 拿到这个类的metadata
 		AnnotationMetadata metadata;
 		if (beanDef instanceof AnnotatedBeanDefinition &&
 				className.equals(((AnnotatedBeanDefinition) beanDef).getMetadata().getClassName())) {
@@ -122,11 +124,15 @@ abstract class ConfigurationClassUtils {
 			}
 		}
 
+		// 判断这个类是否有Configuration注解
 		Map<String, Object> config = metadata.getAnnotationAttributes(Configuration.class.getName());
+		// 如果有，并且proxyBeanMethods属性不是false
 		if (config != null && !Boolean.FALSE.equals(config.get("proxyBeanMethods"))) {
+			// 则这个configuration是一个full配置类
 			beanDef.setAttribute(CONFIGURATION_CLASS_ATTRIBUTE, CONFIGURATION_CLASS_FULL);
-		}
+		} // 所以如果proxyBeanMethods=false又或者包含了Component, ComponentScan, Import, ImportResource，这四个注解又或者包含了@Bean的方法
 		else if (config != null || isConfigurationCandidate(metadata)) {
+			// 那么就算是lite配置类
 			beanDef.setAttribute(CONFIGURATION_CLASS_ATTRIBUTE, CONFIGURATION_CLASS_LITE);
 		}
 		else {
@@ -134,6 +140,7 @@ abstract class ConfigurationClassUtils {
 		}
 
 		// It's a full or lite configuration candidate... Let's determine the order value, if any.
+		// 如果包含了order属性，则赋值
 		Integer order = getOrder(metadata);
 		if (order != null) {
 			beanDef.setAttribute(ORDER_ATTRIBUTE, order);
@@ -143,6 +150,7 @@ abstract class ConfigurationClassUtils {
 	}
 
 	/**
+	 * 包含了Component, ComponentScan, Import, ImportResource四个注解，或者类里面有@Bean的方法，就返回true
 	 * Check the given metadata for a configuration class candidate
 	 * (or nested component class declared within a configuration/component class).
 	 * @param metadata the metadata of the annotated class
@@ -156,6 +164,7 @@ abstract class ConfigurationClassUtils {
 		}
 
 		// Any of the typical annotations found?
+		// 是否包含Component, ComponentScan, Import, ImportResource四个注解，如果包含返回true
 		for (String indicator : candidateIndicators) {
 			if (metadata.isAnnotated(indicator)) {
 				return true;
@@ -163,6 +172,7 @@ abstract class ConfigurationClassUtils {
 		}
 
 		// Finally, let's look for @Bean methods...
+		// 又或者是否在里面包含了@Bean method，也返回true
 		return hasBeanMethods(metadata);
 	}
 

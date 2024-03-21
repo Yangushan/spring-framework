@@ -20,6 +20,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 
 /**
+ * 实现这个类的子类可以用来添加一些BeanDefinition
  * Extension to the standard {@link BeanFactoryPostProcessor} SPI, allowing for
  * the registration of further bean definitions <i>before</i> regular
  * BeanFactoryPostProcessor detection kicks in. In particular,
@@ -33,6 +34,10 @@ import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 public interface BeanDefinitionRegistryPostProcessor extends BeanFactoryPostProcessor {
 
 	/**
+	 * 这个方法会先执行与父类的postProcessBeanFactory，
+	 * 这个方法可以用来注册BeanDefinition，父类的方法只能用来修改BeanDefinition不能新增
+	 * <p>比如我们自己写的spring扩展jar包，就可以通过继承这个类实现这个方法，来完成我们包下面一些bean的注册</p>
+	 *
 	 * Modify the application context's internal bean definition registry after its
 	 * standard initialization. All regular bean definitions will have been loaded,
 	 * but no beans will have been instantiated yet. This allows for adding further

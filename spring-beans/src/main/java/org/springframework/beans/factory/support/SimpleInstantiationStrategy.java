@@ -154,6 +154,12 @@ public class SimpleInstantiationStrategy implements InstantiationStrategy {
 			Method priorInvokedFactoryMethod = currentlyInvokedFactoryMethod.get();
 			try {
 				currentlyInvokedFactoryMethod.set(factoryMethod);
+				// factoryMethod是我们@Bean修饰的哪个方法
+				// 调用invoke方法拿到我们的bean对象，但是这里有一个区分
+				// 当我们使用@Configuration full类的时候，spring会给这个类创建一个代理对象
+				// 所以如果我们是使用的@Configuration full类注入@Bean method的时候，这里并不是直接执行我们的@Bean方法，而是会经过代理对象拦截一下
+				// 代理对象的回调方法在org.springframework.context.annotation.ConfigurationClassEnhancer.CALLBACKS中定义类两个
+				// 主要看BeanMethodInterceptor
 				Object result = factoryMethod.invoke(factoryBean, args);
 				if (result == null) {
 					result = new NullBean();

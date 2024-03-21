@@ -120,6 +120,7 @@ class ConfigurationClassBeanDefinitionReader {
 
 
 	/**
+	 * 完成@Bean，@ImportSource, @Import并且类是ImportBeanDefinitionRegistrar继承类，这些类的BeanDefinition注入
 	 * Read {@code configurationModel}, registering bean definitions
 	 * with the registry based on its contents.
 	 */
@@ -131,6 +132,7 @@ class ConfigurationClassBeanDefinitionReader {
 	}
 
 	/**
+	 * 完成@Bean，@ImportSource, @Import并且类是ImportBeanDefinitionRegistrar继承类，这些类的BeanDefinition注入
 	 * Read a particular {@link ConfigurationClass}, registering bean definitions
 	 * for the class itself and all of its {@link Bean} methods.
 	 */
@@ -146,14 +148,18 @@ class ConfigurationClassBeanDefinitionReader {
 			return;
 		}
 
-		if (configClass.isImported()) {
+		// 如果当前的configClass也是被其他类导入进来的，那么需要把自己先注册一下
+		if (configClass.isImported()) { // 作为一个BeanDefinition注册到工厂中
 			registerBeanDefinitionForImportedConfigurationClass(configClass);
 		}
+		// 在前面的parse流程中如果发现了@Bean的方法，则在这里注册为BeanDefinition加入到工厂中
 		for (BeanMethod beanMethod : configClass.getBeanMethods()) {
 			loadBeanDefinitionsForBeanMethod(beanMethod);
 		}
 
+		// 在前面parse流程中我们使用@ImportResource属性添加的数据，在这里会被注册为一个BeanDefinition加入到工厂中
 		loadBeanDefinitionsFromImportedResources(configClass.getImportedResources());
+		// 在前面parse流程中我们通过@Import注入的类，如果是一个ImportBeanDefinitionRegistrar接口的实现类，那么就会在这里被注入到BeanDefinition工厂中
 		loadBeanDefinitionsFromRegistrars(configClass.getImportBeanDefinitionRegistrars());
 	}
 
@@ -198,10 +204,12 @@ class ConfigurationClassBeanDefinitionReader {
 			return;
 		}
 
+		// 拿到bean属性
 		AnnotationAttributes bean = AnnotationConfigUtils.attributesFor(metadata, Bean.class);
 		Assert.state(bean != null, "No @Bean annotation attributes");
 
 		// Consider name and any aliases
+		// 拿到bean名称
 		List<String> names = new ArrayList<>(Arrays.asList(bean.getStringArray("name")));
 		String beanName = (!names.isEmpty() ? names.remove(0) : methodName);
 
@@ -211,18 +219,23 @@ class ConfigurationClassBeanDefinitionReader {
 		}
 
 		// Has this effectively been overridden before (e.g. via XML)?
+		// 是否存在相同名称的@Bean（这里要注意如果我们同时使用了@Component和@Bean注册同一个bean，因为我们@Component在前面parse流程中已经注册了BeanDefinition
+		// 但是这个判断又会返回false，导致没有覆盖的数据，继续往下走，也就是我们@Bean生成的BeanDefinition会覆盖掉我们@COmponent的哪个，所以我们最后得到的BeanDefinition是@Bean的）
 		if (isOverriddenByExistingDefinition(beanMethod, beanName)) {
+			// 这里有一个报错，也就是如果我们的@Bean的名字和我们加载它的配置文件名字一样，则这里会有一个报错的
 			if (beanName.equals(beanMethod.getConfigurationClass().getBeanName())) {
 				throw new BeanDefinitionStoreException(beanMethod.getConfigurationClass().getResource().getDescription(),
 						beanName, "Bean name derived from @Bean method '" + beanMethod.getMetadata().getMethodName() +
 						"' clashes with bean name for containing configuration class; please make those names unique!");
 			}
+			//否则直接返回了，所以@Bean可以重复命名，只要不是和当前所在配置文件名字重复就行
 			return;
 		}
 
 		ConfigurationClassBeanDefinition beanDef = new ConfigurationClassBeanDefinition(configClass, metadata, beanName);
 		beanDef.setSource(this.sourceExtractor.extractSource(metadata, configClass.getResource()));
 
+		// 下面就是拿到不同的BeanDefinition属性进行赋值然后注册
 		if (metadata.isStatic()) {
 			// static @Bean method
 			if (configClass.getMetadata() instanceof StandardAnnotationMetadata) {
@@ -305,6 +318,7 @@ class ConfigurationClassBeanDefinitionReader {
 		// -> allow the current bean method to override, since both are at second-pass level.
 		// However, if the bean method is an overloaded case on the same configuration class,
 		// preserve the existing bean definition.
+		// @Bean生成的BeanDefinition是ConfigurationClassBeanDefinition
 		if (existingBeanDef instanceof ConfigurationClassBeanDefinition) {
 			ConfigurationClassBeanDefinition ccbd = (ConfigurationClassBeanDefinition) existingBeanDef;
 			if (ccbd.getMetadata().getClassName().equals(
@@ -321,6 +335,8 @@ class ConfigurationClassBeanDefinitionReader {
 
 		// A bean definition resulting from a component scan can be silently overridden
 		// by an @Bean method, as of 4.2...
+		// @Component生成的是ScannedGenericBeanDefinition，这里直接返回false了
+		// 所以我们@Bean最后会覆盖@Component生成的bean对象
 		if (existingBeanDef instanceof ScannedGenericBeanDefinition) {
 			return false;
 		}
