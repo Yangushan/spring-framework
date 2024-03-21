@@ -1,4 +1,4 @@
-package org.yangushan.service;
+package org.yangushan.service.circular;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
