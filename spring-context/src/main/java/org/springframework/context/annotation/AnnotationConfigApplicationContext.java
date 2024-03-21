@@ -65,8 +65,15 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * through {@link #register} calls and then manually {@linkplain #refresh refreshed}.
 	 */
 	public AnnotationConfigApplicationContext() {
+		// 这里会先调用父类的构造方法
 		StartupStep createAnnotatedBeanDefReader = getApplicationStartup().start("spring.context.annotated-bean-reader.create");
-		// BeanDefinition 的读取器
+		// BeanDefinition 的读取器，并且会注入一些基础的BeanFactoryPostProcessor和BeanPostProcessor
+		/**
+		 * 注册ConfigurationClassPostProcessor的BeanDefinition，它是一个BeanFactoryPostProcessor
+		 * 注册AutowiredAnnotationBeanPostProcessor，是用来处理我们@Autowired, @Value, @Inject的BeanPostProcessor
+		 * 注册CommonAnnotationBeanPostProcessor，用来处理我们的@Resource的BeanPostProcessor
+		 * 注册EventListenerMethodProcessor事件监听器（@EventListener注解）的BeanFactoryPostProcessor
+		 */
 		this.reader = new AnnotatedBeanDefinitionReader(this);
 		createAnnotatedBeanDefReader.end();
 		// 扫描器
@@ -90,7 +97,9 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * {@link Configuration @Configuration} classes
 	 */
 	public AnnotationConfigApplicationContext(Class<?>... componentClasses) {
+		// 构造DefaultListableBeanFactory，构造AnnotatedBeanDefinitionReader，ClassPathBeanDefinitionScanner
 		this();
+		// 注册我们传送进来的这个bean为一个beanDefinition
 		register(componentClasses);
 		refresh();
 	}

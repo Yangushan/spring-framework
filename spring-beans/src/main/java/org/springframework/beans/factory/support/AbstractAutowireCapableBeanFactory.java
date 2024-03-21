@@ -1676,6 +1676,11 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// 这里的这个PropertyDescriptors会拿到我们bean里面所有的字段，也就是含有get/set方法的，尽管可能不存在这个字段只存在get/set，但是也会识别为一个字段
 		PropertyDescriptor[] pds = bw.getPropertyDescriptors();
 		for (PropertyDescriptor pd : pds) {
+			/**
+			 * isExcludedFromDependencyCheck这个判断是判断是否需要忽略这个set方法
+			 * 因为项目中有很多aware回调，他们的名字也是set开头的，为了防止这些方法被二次调用
+			 * 所以会在启动的时候把哪些aware加入到忽略的列表中，这里判断如果这个bean在这个忽略的方法中，则会进行忽略
+			 */
 			// 之后遍历所有的字段，判断是否有write方法，在我们之前的propertyValue里面是否已经设置过这个字段了
 			// 又或者是否是一个普通的字段（普通=number, string, date之类的简单类型）
 			if (pd.getWriteMethod() != null && !isExcludedFromDependencyCheck(pd) && !pvs.contains(pd.getName()) &&

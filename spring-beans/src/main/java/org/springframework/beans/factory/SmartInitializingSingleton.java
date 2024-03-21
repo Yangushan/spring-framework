@@ -17,6 +17,9 @@
 package org.springframework.beans.factory;
 
 /**
+ * 实现这个接口的子类，都会在所有非懒加载的单例bean都初始化完成之后会调用该类的唯一方法afterSingletonsInstantiated
+ * <p></p>
+ *
  * Callback interface triggered at the end of the singleton pre-instantiation phase
  * during {@link BeanFactory} bootstrap. This interface can be implemented by
  * singleton beans in order to perform some initialization after the regular
@@ -44,6 +47,7 @@ package org.springframework.beans.factory;
 public interface SmartInitializingSingleton {
 
 	/**
+	 * 这个接口会在所有非懒加载的单例bean都初始化完成之后会调用
 	 * Invoked right at the end of the singleton pre-instantiation phase,
 	 * with a guarantee that all regular singleton beans have been created
 	 * already. {@link ListableBeanFactory#getBeansOfType} calls within

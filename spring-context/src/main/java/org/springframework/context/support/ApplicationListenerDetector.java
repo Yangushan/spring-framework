@@ -31,6 +31,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**
+ * 这个BeanPostProcessor的作用主要是发现ApplicationListener（实现这个类的）的类，然后注册到工厂中
  * {@code BeanPostProcessor} that detects beans which implement the {@code ApplicationListener}
  * interface. This catches beans that can't reliably be detected by {@code getBeanNamesForType}
  * and related operations which only work against top-level beans.

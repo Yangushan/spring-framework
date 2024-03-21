@@ -85,6 +85,13 @@ public class AnnotatedBeanDefinitionReader {
 		Assert.notNull(environment, "Environment must not be null");
 		this.registry = registry;
 		this.conditionEvaluator = new ConditionEvaluator(registry, environment, null);
+		// 注册一些关键的BeanFactoryPostProcessor和BeanPostProcessor
+		/**
+		 * 注册ConfigurationClassPostProcessor的BeanDefinition，它是一个BeanFactoryPostProcessor
+		 * 注册AutowiredAnnotationBeanPostProcessor，是用来处理我们@Autowired, @Value, @Inject的BeanPostProcessor
+		 * 注册CommonAnnotationBeanPostProcessor，用来处理我们的@Resource的BeanPostProcessor
+		 * 注册EventListenerMethodProcessor事件监听器（@EventListener注解）的BeanFactoryPostProcessor
+		 */
 		AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry);
 	}
 
@@ -133,6 +140,7 @@ public class AnnotatedBeanDefinitionReader {
 	 * e.g. {@link Configuration @Configuration} classes
 	 */
 	public void register(Class<?>... componentClasses) {
+		// 把我们注册的bean添加到BeanDefinition里面
 		for (Class<?> componentClass : componentClasses) {
 			registerBean(componentClass);
 		}
@@ -234,6 +242,7 @@ public class AnnotatedBeanDefinitionReader {
 	}
 
 	/**
+	 * 注册一个class为到beanDefinition map里面
 	 * Register a bean from the given bean class, deriving its metadata from
 	 * class-declared annotations.
 	 * @param beanClass the class of the bean

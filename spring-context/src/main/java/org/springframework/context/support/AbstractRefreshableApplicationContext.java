@@ -113,6 +113,7 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 
 
 	/**
+	 * 这个方法是允许重复刷新的，如果已经刷新过了调用容器销毁等逻辑，重新构建容器
 	 * This implementation performs an actual refresh of this context's underlying
 	 * bean factory, shutting down the previous bean factory (if any) and
 	 * initializing a fresh bean factory for the next phase of the context's lifecycle.

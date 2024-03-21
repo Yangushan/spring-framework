@@ -51,6 +51,9 @@ import org.springframework.util.ClassUtils;
 import org.springframework.util.CollectionUtils;
 
 /**
+ * 这个类的主要作用是用来发现在bean中使用了@EventListener注解的方法，然后注册为ApplicationListener，
+ * 主要是靠实现了SmartInitializingSingleton的afterSingletonsInstantiated来完成
+ * <p></p>
  * Registers {@link EventListener} methods as individual {@link ApplicationListener} instances.
  * Implements {@link BeanFactoryPostProcessor} (as of 5.1) primarily for early retrieval,
  * avoiding AOP checks for this processor bean and its {@link EventListenerFactory} delegates.
@@ -116,7 +119,9 @@ public class EventListenerMethodProcessor
 		this.eventListenerFactories = factories;
 	}
 
-
+	/**
+	 * 这个接口会在所有非懒加载的单例bean初始化完成之后调用
+	 */
 	@Override
 	public void afterSingletonsInstantiated() {
 		ConfigurableListableBeanFactory beanFactory = this.beanFactory;
@@ -150,7 +155,7 @@ public class EventListenerMethodProcessor
 							}
 						}
 					}
-					try {
+					try { // 主要逻辑
 						processBean(beanName, type);
 					}
 					catch (Throwable ex) {
@@ -163,6 +168,7 @@ public class EventListenerMethodProcessor
 	}
 
 	private void processBean(final String beanName, final Class<?> targetType) {
+		// 判断是否有@EventListner
 		if (!this.nonAnnotatedClasses.contains(targetType) &&
 				AnnotationUtils.isCandidateClass(targetType, EventListener.class) &&
 				!isSpringContainerClass(targetType)) {
@@ -187,6 +193,7 @@ public class EventListenerMethodProcessor
 				}
 			}
 			else {
+				// 如果方法有这个注解，把方法包装成ApplicaionListener，然后加入到工厂中
 				// Non-empty set of methods
 				ConfigurableApplicationContext context = this.applicationContext;
 				Assert.state(context != null, "No ApplicationContext set");
@@ -195,6 +202,7 @@ public class EventListenerMethodProcessor
 				for (Method method : annotatedMethods.keySet()) {
 					for (EventListenerFactory factory : factories) {
 						if (factory.supportsMethod(method)) {
+							// 包装方法为ApplicationListener，适配器模式
 							Method methodToUse = AopUtils.selectInvocableMethod(method, context.getType(beanName));
 							ApplicationListener<?> applicationListener =
 									factory.createApplicationListener(beanName, targetType, methodToUse);
