@@ -21,7 +21,7 @@ public class Main3 {
 		// AnnotationConfigApplicationContext在源码中是不允许refresh多次的，所以会报错
 //		context1.refresh();
 
-
+		System.out.println(context1.getBean("bean1"));
 
 
 	}

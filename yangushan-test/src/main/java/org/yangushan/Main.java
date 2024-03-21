@@ -1,16 +1,12 @@
 package org.yangushan;
 
-import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
-import org.springframework.beans.factory.support.DefaultListableBeanFactory;
-import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.yangushan.service.*;
+import org.yangushan.service.circular.A4;
 import org.yangushan.service.constructor.C6;
 import org.yangushan.service.qualifier.LoadBalanceTestBean;
-
-import java.util.function.Supplier;
 
 public class Main {
 
