@@ -223,11 +223,13 @@ public abstract class AopUtils {
 	 */
 	public static boolean canApply(Pointcut pc, Class<?> targetClass, boolean hasIntroductions) {
 		Assert.notNull(pc, "Pointcut must not be null");
+		// 先调用class的匹配
 		if (!pc.getClassFilter().matches(targetClass)) {
 			return false;
 		}
 
 		MethodMatcher methodMatcher = pc.getMethodMatcher();
+		// 在判断methodMatcher
 		if (methodMatcher == MethodMatcher.TRUE) {
 			// No need to iterate the methods if we're matching any method anyway...
 			return true;
@@ -247,6 +249,8 @@ public abstract class AopUtils {
 		for (Class<?> clazz : classes) {
 			Method[] methods = ReflectionUtils.getAllDeclaredMethods(clazz);
 			for (Method method : methods) {
+				// 如果isRuntime=true，则用的是IntroductionAwareMethodMatcher，3个参数的match
+				// 否则用的是我们methodMatcher里面2个参数的match进行匹配
 				if (introductionAwareMethodMatcher != null ?
 						introductionAwareMethodMatcher.matches(method, targetClass, hasIntroductions) :
 						methodMatcher.matches(method, targetClass)) {
@@ -271,6 +275,7 @@ public abstract class AopUtils {
 	}
 
 	/**
+	 * 实际上就是调用我们pointcut里面的match进行匹配
 	 * Can the given advisor apply at all on the given class?
 	 * <p>This is an important test as it can be used to optimize out an advisor for a class.
 	 * This version also takes into account introductions (for IntroductionAwareMethodMatchers).
@@ -295,6 +300,7 @@ public abstract class AopUtils {
 	}
 
 	/**
+	 * 找到所有匹配的class
 	 * Determine the sublist of the {@code candidateAdvisors} list
 	 * that is applicable to the given class.
 	 * @param candidateAdvisors the Advisors to evaluate
@@ -318,6 +324,7 @@ public abstract class AopUtils {
 				// already processed
 				continue;
 			}
+			// 调用match方法匹配
 			if (canApply(candidate, clazz, hasIntroductions)) {
 				eligibleAdvisors.add(candidate);
 			}
@@ -341,6 +348,7 @@ public abstract class AopUtils {
 		// Use reflection to invoke the method.
 		try {
 			ReflectionUtils.makeAccessible(method);
+			// 通过反射执行被代理对象的方法
 			return method.invoke(target, args);
 		}
 		catch (InvocationTargetException ex) {

@@ -77,12 +77,17 @@ public class ThrowsAdviceInterceptor implements MethodInterceptor, AfterAdvice {
 		this.throwsAdvice = throwsAdvice;
 
 		Method[] methods = throwsAdvice.getClass().getMethods();
+		// 这里可以看到，先拿到了advice的所有方法
 		for (Method method : methods) {
+			// 然后判断这个方法的名字是否是我们指定的AFTER_THROWING方法名字
+			// 并且参数只能是1个或者4个
 			if (method.getName().equals(AFTER_THROWING) &&
 					(method.getParameterCount() == 1 || method.getParameterCount() == 4)) {
+				// 然后拿到最后一个参数也就是异常
 				Class<?> throwableParam = method.getParameterTypes()[method.getParameterCount() - 1];
-				if (Throwable.class.isAssignableFrom(throwableParam)) {
+				if (Throwable.class.isAssignableFrom(throwableParam)) { // 如果是异常的子类
 					// An exception handler to register...
+					// 那么存放在我们的map里面
 					this.exceptionHandlerMap.put(throwableParam, method);
 					if (logger.isDebugEnabled()) {
 						logger.debug("Found exception handler method on throws advice: " + method);
@@ -113,6 +118,7 @@ public class ThrowsAdviceInterceptor implements MethodInterceptor, AfterAdvice {
 			return mi.proceed();
 		}
 		catch (Throwable ex) {
+			// 如果报错了，从错误异常map里面拿到对应符合的method，如果拿到了则调用我们的方法
 			Method handlerMethod = getExceptionHandler(ex);
 			if (handlerMethod != null) {
 				invokeHandlerMethod(mi, ex, handlerMethod);
@@ -132,7 +138,9 @@ public class ThrowsAdviceInterceptor implements MethodInterceptor, AfterAdvice {
 		if (logger.isTraceEnabled()) {
 			logger.trace("Trying to find handler for exception of type [" + exceptionClass.getName() + "]");
 		}
+		// 先拿直接匹配的类
 		Method handler = this.exceptionHandlerMap.get(exceptionClass);
+		// 如果拿不到则拿父类继续匹配，直到父类如果是Throwable，则跳出循环
 		while (handler == null && exceptionClass != Throwable.class) {
 			exceptionClass = exceptionClass.getSuperclass();
 			handler = this.exceptionHandlerMap.get(exceptionClass);

@@ -54,6 +54,7 @@ public class BeanNameAutoProxyCreator extends AbstractAutoProxyCreator {
 
 
 	/**
+	 * 指定的beanName可以做一些简单的符号匹配，比如*就是全部等等
 	 * Set the names of the beans that should automatically get wrapped with proxies.
 	 * A name can specify a prefix to match by ending with "*", e.g. "myBean,tx*"
 	 * will match the bean named "myBean" and all beans whose name start with "tx".

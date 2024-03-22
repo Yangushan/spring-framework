@@ -159,18 +159,25 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 	@Nullable
 	public Object proceed() throws Throwable {
 		// We start with an index of -1 and increment early.
+		// currentInterceptorIndex一开始是-1，每次执行完一个代理方法就会+1
+		// 然后interceptorsAndDynamicMethodMatchers是存放我们找到匹配的代理方法列表
+		// 所以当执行的方法数量和我们需要执行的数量相等的时候，就说明代理方法执行完了，那么就调用真正的被代理的方法
 		if (this.currentInterceptorIndex == this.interceptorsAndDynamicMethodMatchers.size() - 1) {
 			return invokeJoinpoint();
 		}
 
+		// 拿当前对应下标的代理方法
 		Object interceptorOrInterceptionAdvice =
 				this.interceptorsAndDynamicMethodMatchers.get(++this.currentInterceptorIndex);
+		// 判断是不是InterceptorAndDynamicMethodMatcher类型，这个类型也就是我们在设置pointcut MethodMatch对象的时候
+		// 里面有一个runtime参数，如果设置为true就会是这个类型，默认是false
 		if (interceptorOrInterceptionAdvice instanceof InterceptorAndDynamicMethodMatcher) {
 			// Evaluate dynamic method matcher here: static part will already have
 			// been evaluated and found to match.
 			InterceptorAndDynamicMethodMatcher dm =
 					(InterceptorAndDynamicMethodMatcher) interceptorOrInterceptionAdvice;
 			Class<?> targetClass = (this.targetClass != null ? this.targetClass : this.method.getDeclaringClass());
+			// 调用三个参数的matches
 			if (dm.methodMatcher.matches(this.method, targetClass, this.arguments)) {
 				return dm.interceptor.invoke(this);
 			}
@@ -181,6 +188,8 @@ public class ReflectiveMethodInvocation implements ProxyMethodInvocation, Clonea
 			}
 		}
 		else {
+			// 直接调用MethodInterceptor的invoke方法，因为我们在MethodInterceptor最终还是调用proceed，所以这里是一个递归
+			// 责任链的实现
 			// It's an interceptor, so we just invoke it: The pointcut will have
 			// been evaluated statically before this object was constructed.
 			return ((MethodInterceptor) interceptorOrInterceptionAdvice).invoke(this);

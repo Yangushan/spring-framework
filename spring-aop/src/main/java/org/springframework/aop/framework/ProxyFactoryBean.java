@@ -49,6 +49,9 @@ import org.springframework.util.ClassUtils;
 import org.springframework.util.ObjectUtils;
 
 /**
+ * 这个类使用了FactoryBean的方式帮我们创建代理对象，使用方法和ProxyFactory基本类似，设置target, advice等
+ * <p></p>
+ *
  * {@link org.springframework.beans.factory.FactoryBean} implementation that builds an
  * AOP proxy based on beans in a Spring {@link org.springframework.beans.factory.BeanFactory}.
  *

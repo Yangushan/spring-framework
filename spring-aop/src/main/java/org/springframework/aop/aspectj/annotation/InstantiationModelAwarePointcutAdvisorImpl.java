@@ -34,6 +34,7 @@ import org.springframework.aop.support.Pointcuts;
 import org.springframework.lang.Nullable;
 
 /**
+ * AspectJ构建的PointcutAdvisor对象
  * Internal implementation of AspectJPointcutAdvisor.
  *
  * <p>Note that there will be one instance of this advisor for each target method.
@@ -146,6 +147,11 @@ final class InstantiationModelAwarePointcutAdvisorImpl
 		return this.instantiatedAdvice;
 	}
 
+	/**
+	 * 实际把我们asjectj注解转化为一个具体advice方法的逻辑
+	 * @param pointcut
+	 * @return
+	 */
 	private Advice instantiateAdvice(AspectJExpressionPointcut pointcut) {
 		Advice advice = this.aspectJAdvisorFactory.getAdvice(this.aspectJAdviceMethod, pointcut,
 				this.aspectInstanceFactory, this.declarationOrder, this.aspectName);

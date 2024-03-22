@@ -23,6 +23,9 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 
 /**
+ * Spring帮我们创建的一个代理类的工厂，我们只需要设置基本的target, advice/advisor就可以完成我们类的代理，
+ * 会自动帮我们判断使用jdk动态代理还是cglib代理
+ * <p></p>
  * Factory for AOP proxies for programmatic use, rather than via declarative
  * setup in a bean factory. This class provides a simple way of obtaining
  * and configuring AOP proxy instances in custom user code.

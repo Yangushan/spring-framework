@@ -53,6 +53,7 @@ import java.lang.reflect.Method;
 public interface MethodMatcher {
 
 	/**
+	 * 匹配我们的方法是否需要拦截
 	 * Perform static checking whether the given method matches.
 	 * <p>If this returns {@code false} or if the {@link #isRuntime()}
 	 * method returns {@code false}, no runtime check (i.e. no
@@ -65,6 +66,8 @@ public interface MethodMatcher {
 	boolean matches(Method method, Class<?> targetClass);
 
 	/**
+	 * 如果=true，则在最终调用Procceed流程的时候，会再一次判断一下三个参数的match方法，来判断是否是我们需要执行的方法，
+	 * 默认是false
 	 * Is this MethodMatcher dynamic, that is, must a final call be made on the
 	 * {@link #matches(java.lang.reflect.Method, Class, Object[])} method at
 	 * runtime even if the 2-arg matches method returns {@code true}?
@@ -77,6 +80,11 @@ public interface MethodMatcher {
 	boolean isRuntime();
 
 	/**
+	 * <p>
+	 * 当isRuntime=true的时候，在执行的时候还会调用这个方法来再次判断我们当前的方法之类的是否是我们需要的，
+	 * 这里还会传入参数，所以如果我们可能需要根据参数传入的不同来判断一个方法是否需要拦截的时候，那么就可以根据实现这个规则来进行过滤，
+	 * 默认情况下isRuntime=false
+	 * </p>
 	 * Check whether there a runtime (dynamic) match for this method,
 	 * which must have matched statically.
 	 * <p>This method is invoked only if the 2-arg matches method returns

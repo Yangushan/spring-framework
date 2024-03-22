@@ -71,7 +71,11 @@ public class AdvisedSupport extends ProxyConfig implements Advised {
 	public static final TargetSource EMPTY_TARGET_SOURCE = EmptyTargetSource.INSTANCE;
 
 
-	/** Package-protected to allow direct access for efficiency. */
+	/**
+	 * targetSource和target功能类似，但是targetSource不需要明确指定是哪个类
+	 * 所以可以根据设置targetSource里面的getTarget方法，我们来根据不同情况设置返回值
+	 * Package-protected to allow direct access for efficiency.
+	 */
 	TargetSource targetSource = EMPTY_TARGET_SOURCE;
 
 	/** Whether the Advisors are already filtered for the specific target class. */
@@ -372,6 +376,11 @@ public class AdvisedSupport extends ProxyConfig implements Advised {
 		return this.advisors;
 	}
 
+	/**
+	 * 其实就是添加advisor，最后底层会包装成advisor
+	 * @param advice the advice to add to the tail of the chain
+	 * @throws AopConfigException
+	 */
 	@Override
 	public void addAdvice(Advice advice) throws AopConfigException {
 		int pos = this.advisors.size();
@@ -393,7 +402,7 @@ public class AdvisedSupport extends ProxyConfig implements Advised {
 			// We need an IntroductionAdvisor for this kind of introduction.
 			throw new AopConfigException("DynamicIntroductionAdvice may only be added as part of IntroductionAdvisor");
 		}
-		else {
+		else { // 包装成advisor
 			addAdvisor(pos, new DefaultPointcutAdvisor(advice));
 		}
 	}
@@ -457,6 +466,7 @@ public class AdvisedSupport extends ProxyConfig implements Advised {
 
 
 	/**
+	 * 根据方法和类查找出当前匹配的advice列表
 	 * Determine a list of {@link org.aopalliance.intercept.MethodInterceptor} objects
 	 * for the given method, based on this configuration.
 	 * @param method the proxied method
@@ -464,9 +474,12 @@ public class AdvisedSupport extends ProxyConfig implements Advised {
 	 * @return a List of MethodInterceptors (may also include InterceptorAndDynamicMethodMatchers)
 	 */
 	public List<Object> getInterceptorsAndDynamicInterceptionAdvice(Method method, @Nullable Class<?> targetClass) {
+		// 缓存
 		MethodCacheKey cacheKey = new MethodCacheKey(method);
 		List<Object> cached = this.methodCache.get(cacheKey);
+		// 如果没有缓存
 		if (cached == null) {
+			// this就是当前的ProxyFactory
 			cached = this.advisorChainFactory.getInterceptorsAndDynamicInterceptionAdvice(
 					this, method, targetClass);
 			this.methodCache.put(cacheKey, cached);

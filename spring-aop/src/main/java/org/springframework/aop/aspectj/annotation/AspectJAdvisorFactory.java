@@ -85,6 +85,7 @@ public interface AspectJAdvisorFactory {
 			int declarationOrder, String aspectName);
 
 	/**
+	 * 真正把我们aspectj的注解和方法构造成advice的地方，实际上就是根据不同的注解返回@see 里面的几个类
 	 * Build a Spring AOP Advice for the given AspectJ advice method.
 	 * @param candidateAdviceMethod the candidate advice method
 	 * @param expressionPointcut the AspectJ expression pointcut

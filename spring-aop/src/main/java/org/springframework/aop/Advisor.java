@@ -55,6 +55,7 @@ public interface Advisor {
 	Advice getAdvice();
 
 	/**
+	 * 这个方法目前没什么用处
 	 * Return whether this advice is associated with a particular instance
 	 * (for example, creating a mixin) or shared with all instances of
 	 * the advised class obtained from the same Spring bean factory.

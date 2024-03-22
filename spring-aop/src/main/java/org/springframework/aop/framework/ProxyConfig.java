@@ -33,13 +33,21 @@ public class ProxyConfig implements Serializable {
 	/** use serialVersionUID from Spring 1.2 for interoperability. */
 	private static final long serialVersionUID = -8409359707199703185L;
 
-
+	/**
+	 * 表示代理的是不是一个类而不是接口：如果是true则直接使用cglib，因为Jdk动态代理不支持class只支持接口
+	 */
 	private boolean proxyTargetClass = false;
 
+	/**
+	 * 是否使用优化：true则表示使用更优化的cglib动态代理（在jdk老版本性能不高）
+	 */
 	private boolean optimize = false;
 
 	boolean opaque = false;
 
+	/**
+	 * 是否把当前被代理对象暴露在ThreadLocal中，可以通过AopContext.getCurrentProxy拿到
+	 */
 	boolean exposeProxy = false;
 
 	private boolean frozen = false;

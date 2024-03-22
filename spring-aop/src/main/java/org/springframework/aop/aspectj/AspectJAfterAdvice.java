@@ -26,6 +26,8 @@ import org.springframework.aop.AfterAdvice;
 import org.springframework.lang.Nullable;
 
 /**
+ * 这个注解是aspectJ单独实现的方法，我们原先的AOP是没有这个的，可以看invoke里面看出来
+ * 这个方法是在方法调用之后，写在了finally里面，所以不管有没有报错，都会在return之前执行
  * Spring AOP advice wrapping an AspectJ after advice method.
  *
  * @author Rod Johnson

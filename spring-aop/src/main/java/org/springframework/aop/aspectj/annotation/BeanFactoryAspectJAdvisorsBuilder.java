@@ -74,6 +74,7 @@ public class BeanFactoryAspectJAdvisorsBuilder {
 
 
 	/**
+	 * 构建系统中的@AspectJ注解bean产生的avisor列表进行返回
 	 * Look for AspectJ-annotated aspect beans in the current bean factory,
 	 * and return to a list of Spring AOP Advisors representing them.
 	 * <p>Creates a Spring Advisor for each AspectJ advice method.
@@ -86,12 +87,16 @@ public class BeanFactoryAspectJAdvisorsBuilder {
 		if (aspectNames == null) {
 			synchronized (this) {
 				aspectNames = this.aspectBeanNames;
+				// double check
 				if (aspectNames == null) {
 					List<Advisor> advisors = new ArrayList<>();
 					aspectNames = new ArrayList<>();
+					// 先从系统中拿到全部的bean对象
 					String[] beanNames = BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
 							this.beanFactory, Object.class, true, false);
+					// 遍历所有的bean
 					for (String beanName : beanNames) {
+						// 判断这个beanName是否是要过滤的
 						if (!isEligibleBean(beanName)) {
 							continue;
 						}
@@ -101,12 +106,17 @@ public class BeanFactoryAspectJAdvisorsBuilder {
 						if (beanType == null) {
 							continue;
 						}
+						// 拿到clazz，判断是否使用了@AspectJ注解
 						if (this.advisorFactory.isAspect(beanType)) {
 							aspectNames.add(beanName);
+							// 切面注解信息
 							AspectMetadata amd = new AspectMetadata(beanType, beanName);
+							// 默认走if逻辑
 							if (amd.getAjType().getPerClause().getKind() == PerClauseKind.SINGLETON) {
+								// 构建一个Aspect解析的一个工厂
 								MetadataAwareAspectInstanceFactory factory =
 										new BeanFactoryAspectInstanceFactory(this.beanFactory, beanName);
+								// 解析class，然后拿到每一个方法，根据分析得到不同的advisor
 								List<Advisor> classAdvisors = this.advisorFactory.getAdvisors(factory);
 								if (this.beanFactory.isSingleton(beanName)) {
 									this.advisorsCache.put(beanName, classAdvisors);
@@ -122,9 +132,11 @@ public class BeanFactoryAspectJAdvisorsBuilder {
 									throw new IllegalArgumentException("Bean with name '" + beanName +
 											"' is a singleton, but aspect instantiation model is not singleton");
 								}
+								// 构建一个Aspect解析的一个工厂
 								MetadataAwareAspectInstanceFactory factory =
 										new PrototypeAspectInstanceFactory(this.beanFactory, beanName);
 								this.aspectFactoryCache.put(beanName, factory);
+								// 解析class，然后拿到每一个方法，根据分析得到不同的advisor
 								advisors.addAll(this.advisorFactory.getAdvisors(factory));
 							}
 						}

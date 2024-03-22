@@ -132,6 +132,8 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 				new LazySingletonAspectInstanceFactoryDecorator(aspectInstanceFactory);
 
 		List<Advisor> advisors = new ArrayList<>();
+		// 拿到非@Pointcut的所有方法并且排序，按照Around.class, Before.class, After.class, AfterReturning.class, AfterThrowing.class顺序
+		// 但是这里也会把普通方法拿出来，会在getAdvisor里面进行过滤，因为拿到的也是空，所以也就忽略了
 		for (Method method : getAdvisorMethods(aspectClass)) {
 			// Prior to Spring Framework 5.2.7, advisors.size() was supplied as the declarationOrderInAspect
 			// to getAdvisor(...) to represent the "current position" in the declared methods list.
@@ -141,6 +143,7 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 			// discovered via reflection in order to support reliable advice ordering across JVM launches.
 			// Specifically, a value of 0 aligns with the default value used in
 			// AspectJPrecedenceComparator.getAspectDeclarationOrder(Advisor).
+			// 把方法解析成advisor，返回空则忽略
 			Advisor advisor = getAdvisor(method, lazySingletonAspectInstanceFactory, 0, aspectName);
 			if (advisor != null) {
 				advisors.add(advisor);
@@ -154,9 +157,12 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 		}
 
 		// Find introduction fields.
+		// 拿到所有字段
 		for (Field field : aspectClass.getDeclaredFields()) {
+			// 如果字段使用了一些切面的信息(DeclareParents注解)，转化为advisor
 			Advisor advisor = getDeclareParentsAdvisor(field);
 			if (advisor != null) {
+
 				advisors.add(advisor);
 			}
 		}
@@ -164,10 +170,18 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 		return advisors;
 	}
 
+	/**
+	 * 拿到非@Pointcut的所有方法并且排序，按照Around.class, Before.class, After.class, AfterReturning.class, AfterThrowing.class顺序
+	 * @param aspectClass
+	 * @return
+	 */
 	private List<Method> getAdvisorMethods(Class<?> aspectClass) {
 		List<Method> methods = new ArrayList<>();
+		// 这里有一个过滤，会拿到我们class中没有@Pointcut注解的所有方法
 		ReflectionUtils.doWithMethods(aspectClass, methods::add, adviceMethodFilter);
 		if (methods.size() > 1) {
+			// 然后按照这个顺序排序，Around.class, Before.class, After.class, AfterReturning.class, AfterThrowing.class
+			// 如果相同按照我们的methodName排序
 			methods.sort(adviceMethodComparator);
 		}
 		return methods;
@@ -204,12 +218,14 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 
 		validate(aspectInstanceFactory.getAspectMetadata().getAspectClass());
 
+		// 拿到注解解析的pointcut
 		AspectJExpressionPointcut expressionPointcut = getPointcut(
 				candidateAdviceMethod, aspectInstanceFactory.getAspectMetadata().getAspectClass());
 		if (expressionPointcut == null) {
 			return null;
 		}
 
+		// 然后构建成InstantiationModelAwarePointcutAdvisorImpl advisor对象
 		return new InstantiationModelAwarePointcutAdvisorImpl(expressionPointcut, candidateAdviceMethod,
 				this, aspectInstanceFactory, declarationOrderInAspect, aspectName);
 	}
@@ -218,10 +234,12 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 	private AspectJExpressionPointcut getPointcut(Method candidateAdviceMethod, Class<?> candidateAspectClass) {
 		AspectJAnnotation<?> aspectJAnnotation =
 				AbstractAspectJAdvisorFactory.findAspectJAnnotationOnMethod(candidateAdviceMethod);
+		// 如果没有AspectJ相关的注解，则返回空
 		if (aspectJAnnotation == null) {
 			return null;
 		}
 
+		// 拿到aspectj的注解信息，然后构建解析注解信息，拿到pointcut
 		AspectJExpressionPointcut ajexp =
 				new AspectJExpressionPointcut(candidateAspectClass, new String[0], new Class<?>[0]);
 		ajexp.setExpression(aspectJAnnotation.getPointcutExpression());
@@ -232,6 +250,15 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 	}
 
 
+	/**
+	 * 真正把我们aspectj的注解和方法构造成advice的地方
+	 * @param candidateAdviceMethod the candidate advice method
+	 * @param expressionPointcut the AspectJ expression pointcut
+	 * @param aspectInstanceFactory the aspect instance factory
+	 * @param declarationOrder the declaration order within the aspect
+	 * @param aspectName the name of the aspect
+	 * @return
+	 */
 	@Override
 	@Nullable
 	public Advice getAdvice(Method candidateAdviceMethod, AspectJExpressionPointcut expressionPointcut,
@@ -240,6 +267,7 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 		Class<?> candidateAspectClass = aspectInstanceFactory.getAspectMetadata().getAspectClass();
 		validate(candidateAspectClass);
 
+		// 拿到aspectj相关的注解
 		AspectJAnnotation<?> aspectJAnnotation =
 				AbstractAspectJAdvisorFactory.findAspectJAnnotationOnMethod(candidateAdviceMethod);
 		if (aspectJAnnotation == null) {
@@ -248,9 +276,10 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 
 		// If we get here, we know we have an AspectJ method.
 		// Check that it's an AspectJ-annotated class
+		// 再次确认当前类是否是@aspectj的class
 		if (!isAspect(candidateAspectClass)) {
 			throw new AopConfigException("Advice must be declared inside an aspect type: " +
-					"Offending method '" + candidateAdviceMethod + "' in class [" +
+ 					"Offending method '" + candidateAdviceMethod + "' in class [" +
 					candidateAspectClass.getName() + "]");
 		}
 
@@ -260,25 +289,27 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 
 		AbstractAspectJAdvice springAdvice;
 
+		// 根据不同的注解类型，构建不同的advice
 		switch (aspectJAnnotation.getAnnotationType()) {
-			case AtPointcut:
+			case AtPointcut: // pointcut注解只是一个关于pointcut过滤条件的注释，忽略
 				if (logger.isDebugEnabled()) {
 					logger.debug("Processing pointcut '" + candidateAdviceMethod.getName() + "'");
 				}
 				return null;
-			case AtAround:
+			case AtAround: // 对应MethodInterceptor
 				springAdvice = new AspectJAroundAdvice(
 						candidateAdviceMethod, expressionPointcut, aspectInstanceFactory);
 				break;
-			case AtBefore:
+			case AtBefore: // 对应MethodBeforeAdvice
 				springAdvice = new AspectJMethodBeforeAdvice(
 						candidateAdviceMethod, expressionPointcut, aspectInstanceFactory);
 				break;
-			case AtAfter:
+			case AtAfter: // 我们原先是没有这个类的，是@Aspectj多出来的注解
+				// 从里面的源码可以看出来，不管原来的方法报不报错，都会在return之前调用，因为写在了finally里面
 				springAdvice = new AspectJAfterAdvice(
 						candidateAdviceMethod, expressionPointcut, aspectInstanceFactory);
 				break;
-			case AtAfterReturning:
+			case AtAfterReturning: // 对应AfterReturningAdvice
 				springAdvice = new AspectJAfterReturningAdvice(
 						candidateAdviceMethod, expressionPointcut, aspectInstanceFactory);
 				AfterReturning afterReturningAnnotation = (AfterReturning) aspectJAnnotation.getAnnotation();
@@ -286,7 +317,7 @@ public class ReflectiveAspectJAdvisorFactory extends AbstractAspectJAdvisorFacto
 					springAdvice.setReturningName(afterReturningAnnotation.returning());
 				}
 				break;
-			case AtAfterThrowing:
+			case AtAfterThrowing: // 这个和我们之前的也不一样，是通过MethodInterceptor实现的，不是通过ThrowsAdvice
 				springAdvice = new AspectJAfterThrowingAdvice(
 						candidateAdviceMethod, expressionPointcut, aspectInstanceFactory);
 				AfterThrowing afterThrowingAnnotation = (AfterThrowing) aspectJAnnotation.getAnnotation();

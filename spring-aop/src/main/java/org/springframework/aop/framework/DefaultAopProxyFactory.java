@@ -54,24 +54,33 @@ public class DefaultAopProxyFactory implements AopProxyFactory, Serializable {
 
 	@Override
 	public AopProxy createAopProxy(AdvisedSupport config) throws AopConfigException {
+
+		// inNativeImage判断是不是在GraalVM上允许
 		if (!NativeDetector.inNativeImage() &&
+				// optimize=true表示使用cglib动态代理（老版本jdk动态代理性能不高）
+				// ProxyTargetClass=true表示代理的是类而不是接口则使用cglib(jdk不支持类只支持接口)
+				// 是否设置了接口，如果没设置则返回true，设置了则返回false
 				(config.isOptimize() || config.isProxyTargetClass() || hasNoUserSuppliedProxyInterfaces(config))) {
 			Class<?> targetClass = config.getTargetClass();
 			if (targetClass == null) {
 				throw new AopConfigException("TargetSource cannot determine target class: " +
 						"Either an interface or a target is required for proxy creation.");
 			}
+			// 如果设置了targetClass还是一个接口的，或者这个类本身是一个继承了Proxy的类（也就是表示是一个代理类），或者进来的是一个lambda的匿名类
+			// 则使用Jdk动态代理
 			if (targetClass.isInterface() || Proxy.isProxyClass(targetClass) || ClassUtils.isLambdaClass(targetClass)) {
 				return new JdkDynamicAopProxy(config);
 			}
+			// 否则使用cglib动态代理
 			return new ObjenesisCglibAopProxy(config);
 		}
-		else {
+		else { // 不是上面的情况则使用jdk动态代理
 			return new JdkDynamicAopProxy(config);
 		}
 	}
 
 	/**
+	 * 是否设置了接口，如果设置了返回false，没设置返回true
 	 * Determine whether the supplied {@link AdvisedSupport} has only the
 	 * {@link org.springframework.aop.SpringProxy} interface specified
 	 * (or no proxy interfaces specified at all).
