@@ -23,6 +23,7 @@ import java.util.List;
 import org.springframework.lang.Nullable;
 
 /**
+ * Spring最终解析@Transactional会变成这个对象
  * TransactionAttribute implementation that works out whether a given exception
  * should cause transaction rollback by applying a number of rollback rules,
  * both positive and negative. If no custom rollback rules apply, this attribute
@@ -116,6 +117,7 @@ public class RuleBasedTransactionAttribute extends DefaultTransactionAttribute i
 
 
 	/**
+	 * 根据计算规则判断是rollbackFor还是noRollbackFor，如果是前者返回true
 	 * Winning rule is the shallowest rule (that is, the closest in the
 	 * inheritance hierarchy to the exception). If no rule applies (-1),
 	 * return false.
@@ -126,7 +128,9 @@ public class RuleBasedTransactionAttribute extends DefaultTransactionAttribute i
 		RollbackRuleAttribute winner = null;
 		int deepest = Integer.MAX_VALUE;
 
+		// 根据注解上配置的rollbackFor, noRollbackFor进行解析
 		if (this.rollbackRules != null) {
+			// 进行判断从子类到父类，层级越低分数越高
 			for (RollbackRuleAttribute rule : this.rollbackRules) {
 				int depth = rule.getDepth(ex);
 				if (depth >= 0 && depth < deepest) {
@@ -137,10 +141,13 @@ public class RuleBasedTransactionAttribute extends DefaultTransactionAttribute i
 		}
 
 		// User superclass behavior (rollback on unchecked) if no rule matches.
+		// 如果我们自己写的rollbackFor和noRollbackFor都没有符合的
+		// 使用父类的Exception来匹配
 		if (winner == null) {
 			return super.rollbackOn(ex);
 		}
 
+		// 最终返回true或者false，如果是我们的rollbackFor胜利就用true，否则返回false表示是不要回滚的异常
 		return !(winner instanceof NoRollbackRuleAttribute);
 	}
 

@@ -23,6 +23,7 @@ import org.springframework.transaction.config.TransactionManagementConfigUtils;
 import org.springframework.util.ClassUtils;
 
 /**
+ * 这个类是ImportSelector的实现接口，在配置类的解析过程中，最后会调用它的selectImports接口返回的列表进行解析
  * Selects which implementation of {@link AbstractTransactionManagementConfiguration}
  * should be used based on the value of {@link EnableTransactionManagement#mode} on the
  * importing {@code @Configuration} class.
@@ -46,8 +47,10 @@ public class TransactionManagementConfigurationSelector extends AdviceModeImport
 	@Override
 	protected String[] selectImports(AdviceMode adviceMode) {
 		switch (adviceMode) {
-			case PROXY:
+			case PROXY: // 默认模式，也就是会导入下面两个类作为bean对象
+				// AutoProxyRegistrar是ImportBeanDefinitionRegistrar的子类，会注册新的BeanDefinition
 				return new String[] {AutoProxyRegistrar.class.getName(),
+						// 注册一个BeanFactoryTransactionAttributeSourceAdvisor的bean，也就是注册一个advisor
 						ProxyTransactionManagementConfiguration.class.getName()};
 			case ASPECTJ:
 				return new String[] {determineTransactionAspectClass()};

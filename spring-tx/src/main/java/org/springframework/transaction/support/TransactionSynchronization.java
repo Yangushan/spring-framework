@@ -21,6 +21,9 @@ import java.io.Flushable;
 import org.springframework.core.Ordered;
 
 /**
+ * Spring给我们留下的同步器，我们可以给我们的Spring事务管理器注册同步器，来完成一些事情，
+ * 比如当完成事务的时候回调我们同步器实现的afterCommit方法等
+ *
  * Interface for transaction synchronization callbacks.
  * Supported by AbstractPlatformTransactionManager.
  *
@@ -106,6 +109,7 @@ public interface TransactionSynchronization extends Ordered, Flushable {
 	}
 
 	/**
+	 * 在完成之前调用，提交和回滚都会调用
 	 * Invoked before transaction commit/rollback.
 	 * Can perform resource cleanup <i>before</i> transaction completion.
 	 * <p>This method will be invoked after {@code beforeCommit}, even when

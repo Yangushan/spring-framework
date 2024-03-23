@@ -159,10 +159,12 @@ import org.springframework.core.Ordered;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
+// 会导入TransactionManagementConfigurationSelector这个类
 @Import(TransactionManagementConfigurationSelector.class)
 public @interface EnableTransactionManagement {
 
 	/**
+	 * 这个注解和@AspectJ的注解作用是一样的，如果是true则用cglib动态代理
 	 * Indicate whether subclass-based (CGLIB) proxies are to be created ({@code true}) as
 	 * opposed to standard Java interface-based proxies ({@code false}). The default is
 	 * {@code false}. <strong>Applicable only if {@link #mode()} is set to
@@ -177,6 +179,7 @@ public @interface EnableTransactionManagement {
 	boolean proxyTargetClass() default false;
 
 	/**
+	 * 默认就是PROXY模型
 	 * Indicate how transactional advice should be applied.
 	 * <p><b>The default is {@link AdviceMode#PROXY}.</b>
 	 * Please note that proxy mode allows for interception of calls through the proxy
@@ -189,6 +192,7 @@ public @interface EnableTransactionManagement {
 	AdviceMode mode() default AdviceMode.PROXY;
 
 	/**
+	 * 因为使用的AOP的技术，所以这个排序会影响到执行顺序
 	 * Indicate the ordering of the execution of the transaction advisor
 	 * when multiple advices are applied at a specific joinpoint.
 	 * <p>The default is {@link Ordered#LOWEST_PRECEDENCE}.

@@ -27,6 +27,7 @@ import org.springframework.transaction.TransactionManager;
 import org.springframework.util.ObjectUtils;
 
 /**
+ * 我们事务中定义的pointcut类，但是底层是用的TransactionAttributeSource去进行匹配的
  * Abstract class that implements a Pointcut that matches if the underlying
  * {@link TransactionAttributeSource} has an attribute for a given method.
  *
@@ -41,9 +42,16 @@ abstract class TransactionAttributeSourcePointcut extends StaticMethodMatcherPoi
 	}
 
 
+	/**
+	 * 方法是否符合
+	 * @param method the candidate method
+	 * @param targetClass the target class
+	 * @return
+	 */
 	@Override
 	public boolean matches(Method method, Class<?> targetClass) {
 		TransactionAttributeSource tas = getTransactionAttributeSource();
+		// 判断这个方法是否使用了@Transactional注解，AbstractFallbackTransactionAttributeSource子类实现
 		return (tas == null || tas.getTransactionAttribute(method, targetClass) != null);
 	}
 
@@ -79,6 +87,7 @@ abstract class TransactionAttributeSourcePointcut extends StaticMethodMatcherPoi
 
 
 	/**
+	 * 过滤class是否符合，看子类AnnotationTransactionAttributeSource
 	 * {@link ClassFilter} that delegates to {@link TransactionAttributeSource#isCandidateClass}
 	 * for filtering classes whose methods are not worth searching to begin with.
 	 */
@@ -86,11 +95,13 @@ abstract class TransactionAttributeSourcePointcut extends StaticMethodMatcherPoi
 
 		@Override
 		public boolean matches(Class<?> clazz) {
+			// 看这个class是否是下面几个类的接口，如果是直接返回false
 			if (TransactionalProxy.class.isAssignableFrom(clazz) ||
 					TransactionManager.class.isAssignableFrom(clazz) ||
 					PersistenceExceptionTranslator.class.isAssignableFrom(clazz)) {
 				return false;
 			}
+			// 否则判断这个类里面是否有方法使用@Transaction注解，有的话返回true
 			TransactionAttributeSource tas = getTransactionAttributeSource();
 			return (tas == null || tas.isCandidateClass(clazz));
 		}

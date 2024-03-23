@@ -120,6 +120,7 @@ public class ConnectionHolder extends ResourceHolderSupport {
 	}
 
 	/**
+	 * 这个其实就是判断当前线程是否持有一个事务
 	 * Return whether this holder represents an active, JDBC-managed transaction.
 	 */
 	protected boolean isTransactionActive() {
