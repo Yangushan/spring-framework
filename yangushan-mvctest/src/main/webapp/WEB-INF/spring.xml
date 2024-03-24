@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xmlns:mvc="http://www.springframework.org/schema/mvc"
+	   xmlns:tx="http://www.springframework.org/schema/tx"
+	   xmlns:context="http://www.springframework.org/schema/context"
+	   xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.1.xsd
+                    http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.1.xsd
+                    http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+                    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd">
+
+	<context:component-scan base-package="org.yangushan"/>
+
+<!--		注册多媒体请求解析器 -->
+	<bean id="multipartResolver" class="org.springframework.web.multipart.support.StandardServletMultipartResolver"/>
+
+	<mvc:annotation-driven>
+		<mvc:message-converters>
+<!--			引入可以帮我们解析object 2 json的解析器-->
+			<bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter" id="mappingJackson2HttpMessageConverter"/>
+
+
+<!--			通过修改String解析器的默认字符来解决中文乱码问题  -->
+			<bean class="org.springframework.http.converter.StringHttpMessageConverter">
+				<property name="defaultCharset" value="UTF-8"></property>
+			</bean>
+		</mvc:message-converters>
+	</mvc:annotation-driven>
+
+	<mvc:interceptors>
+		<bean class="org.yangushan.interceptor.TestInterceptor"/>
+		<bean class="org.yangushan.interceptor.Test1Interceptor"/>
+	</mvc:interceptors>
+
+
+</beans>

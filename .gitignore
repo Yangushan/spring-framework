@@ -30,6 +30,7 @@ buildSrc/build
 target/
 /target/
 /yangushan-test/build
+/yangushan-mvctest/build
 
 # Eclipse artifacts, including WTP generated manifests
 .classpath
