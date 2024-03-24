@@ -527,7 +527,9 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 		long startTime = System.currentTimeMillis();
 
 		try {
+			// 创建applicationContext容器
 			this.webApplicationContext = initWebApplicationContext();
+			// 空方法，子类可以实现
 			initFrameworkServlet();
 		}
 		catch (ServletException | RuntimeException ex) {
@@ -549,6 +551,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 	}
 
 	/**
+	 * 初始化ApplicationContext容器
 	 * Initialize and publish the WebApplicationContext for this servlet.
 	 * <p>Delegates to {@link #createWebApplicationContext} for actual creation
 	 * of the context. Can be overridden in subclasses.
@@ -659,12 +662,14 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 		ConfigurableWebApplicationContext wac =
 				(ConfigurableWebApplicationContext) BeanUtils.instantiateClass(contextClass);
 
+		// 设置一下环境变量
 		wac.setEnvironment(getEnvironment());
 		wac.setParent(parent);
 		String configLocation = getContextConfigLocation();
-		if (configLocation != null) {
+		if (configLocation != null) { // 这个就是我们在web.xml里面设置的配置文件地址
 			wac.setConfigLocation(configLocation);
 		}
+		// refresh
 		configureAndRefreshWebApplicationContext(wac);
 
 		return wac;
@@ -684,9 +689,11 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 			}
 		}
 
+		// 设置servlet上下文
 		wac.setServletContext(getServletContext());
 		wac.setServletConfig(getServletConfig());
 		wac.setNamespace(getNamespace());
+		// 注册一个监听器，在refresh完成之后会调用这个监听器（会在监听器里面完成，我们各种解析器就是在这里完成初始化）
 		wac.addApplicationListener(new SourceFilteringListener(wac, new ContextRefreshListener()));
 
 		// The wac environment's #initPropertySources will be called in any case when the context
@@ -699,6 +706,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 
 		postProcessWebApplicationContext(wac);
 		applyInitializers(wac);
+		// refresh，加载bean等流程
 		wac.refresh();
 	}
 

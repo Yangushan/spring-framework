@@ -121,6 +121,7 @@ class TypeConverterDelegate {
 		ConversionFailedException conversionAttemptEx = null;
 
 		// No custom editor but custom ConversionService specified?
+		// 判断系统是否有转换器
 		ConversionService conversionService = this.propertyEditorRegistry.getConversionService();
 		if (editor == null && conversionService != null && newValue != null && typeDescriptor != null) {
 			TypeDescriptor sourceTypeDesc = TypeDescriptor.forObject(newValue);
@@ -138,6 +139,7 @@ class TypeConverterDelegate {
 		Object convertedValue = newValue;
 
 		// Value not of required type?
+		// 如果有适配的转换器用转换器进行
 		if (editor != null || (requiredType != null && !ClassUtils.isAssignableValue(requiredType, convertedValue))) {
 			if (typeDescriptor != null && requiredType != null && Collection.class.isAssignableFrom(requiredType) &&
 					convertedValue instanceof String) {
@@ -161,6 +163,7 @@ class TypeConverterDelegate {
 			// Try to apply some standard type conversion rules if appropriate.
 
 			if (convertedValue != null) {
+				// 判断我们参数的类型
 				if (Object.class == requiredType) {
 					return (T) convertedValue;
 				}
@@ -190,10 +193,11 @@ class TypeConverterDelegate {
 				if (String.class == requiredType && ClassUtils.isPrimitiveOrWrapper(convertedValue.getClass())) {
 					// We can stringify any primitive value...
 					return (T) convertedValue.toString();
-				}
+				}// 如果我们接收的是一个普通的object，然后
 				else if (convertedValue instanceof String && !requiredType.isInstance(convertedValue)) {
 					if (conversionAttemptEx == null && !requiredType.isInterface() && !requiredType.isEnum()) {
 						try {
+							// 则拿到适合的构造方法
 							Constructor<T> strCtor = requiredType.getConstructor(String.class);
 							return BeanUtils.instantiateClass(strCtor, convertedValue);
 						}

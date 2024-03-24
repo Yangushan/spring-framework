@@ -183,6 +183,7 @@ public abstract class AbstractMessageConverterMethodProcessor extends AbstractMe
 			targetType = GenericTypeResolver.resolveType(getGenericType(returnType), returnType.getContainingClass());
 		}
 
+		// 如果返回的是一个资源
 		if (isResourceType(value, returnType)) {
 			outputMessage.getHeaders().set(HttpHeaders.ACCEPT_RANGES, "bytes");
 			if (value != null && inputMessage.getHeaders().getFirst(HttpHeaders.RANGE) != null &&
@@ -227,6 +228,11 @@ public abstract class AbstractMessageConverterMethodProcessor extends AbstractMe
 				}
 				throw ex;
 			}
+
+			/**
+			 * Spring默认构造了好几个HttpMessageConverter类型，然后通过调用canWrite方法来判断哪个converter合适
+			 * 然后找到他们支持的MediaType列表
+			 */
 			List<MediaType> producibleTypes = getProducibleMediaTypes(request, valueType, targetType);
 
 			if (body != null && producibleTypes.isEmpty()) {
@@ -236,6 +242,7 @@ public abstract class AbstractMessageConverterMethodProcessor extends AbstractMe
 			List<MediaType> mediaTypesToUse = new ArrayList<>();
 			for (MediaType requestedType : acceptableTypes) {
 				for (MediaType producibleType : producibleTypes) {
+					// 之后判断这个mediaType和我们请求的mediaType是否兼容
 					if (requestedType.isCompatibleWith(producibleType)) {
 						mediaTypesToUse.add(getMostSpecificMediaType(requestedType, producibleType));
 					}
@@ -272,6 +279,7 @@ public abstract class AbstractMessageConverterMethodProcessor extends AbstractMe
 
 		if (selectedMediaType != null) {
 			selectedMediaType = selectedMediaType.removeQualityValue();
+			// 拿到我们配置的HttpMessageConverter，如果兼容这个canWrite，那么就使用这个converter写数据
 			for (HttpMessageConverter<?> converter : this.messageConverters) {
 				GenericHttpMessageConverter genericConverter = (converter instanceof GenericHttpMessageConverter ?
 						(GenericHttpMessageConverter<?>) converter : null);
@@ -375,6 +383,7 @@ public abstract class AbstractMessageConverterMethodProcessor extends AbstractMe
 			return new ArrayList<>(mediaTypes);
 		}
 		List<MediaType> result = new ArrayList<>();
+		// 找到符合条件的HttpMessageConverter，然后找到支持的MediaType
 		for (HttpMessageConverter<?> converter : this.messageConverters) {
 			if (converter instanceof GenericHttpMessageConverter && targetType != null) {
 				if (((GenericHttpMessageConverter<?>) converter).canWrite(targetType, valueClass, null)) {

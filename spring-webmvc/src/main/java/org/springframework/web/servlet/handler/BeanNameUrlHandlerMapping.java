@@ -19,9 +19,15 @@ package org.springframework.web.servlet.handler;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ApplicationObjectSupport;
 import org.springframework.util.StringUtils;
 
 /**
+ * 因为这个类的上层父类实现了ApplicationContextAware，所以会进行setApplicationContext回调
+ * 核心流程看下面的方法
+ * @see AbstractDetectingUrlHandlerMapping#detectHandlers()
+ *
  * Implementation of the {@link org.springframework.web.servlet.HandlerMapping}
  * interface that maps from URLs to beans with names that start with a slash ("/"),
  * similar to how Struts maps URLs to action names.

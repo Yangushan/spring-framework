@@ -41,7 +41,7 @@ import org.springframework.util.StreamUtils;
  * @author Juergen Hoeller
  * @since 3.0
  */
-public class StringHttpMessageConverter extends AbstractHttpMessageConverter<String> {
+public class  StringHttpMessageConverter extends AbstractHttpMessageConverter<String> {
 
 	private static final MediaType APPLICATION_PLUS_JSON = new MediaType("application", "*+json");
 
@@ -121,6 +121,7 @@ public class StringHttpMessageConverter extends AbstractHttpMessageConverter<Str
 		if (this.writeAcceptCharset && headers.get(HttpHeaders.ACCEPT_CHARSET) == null) {
 			headers.setAcceptCharset(getAcceptedCharsets());
 		}
+		// 拿到格式，所以我们也可以从这个方法看出来，我们如果中文乱码了怎么解决
 		Charset charset = getContentTypeCharset(headers.getContentType());
 		StreamUtils.copy(str, charset, outputMessage.getBody());
 	}
@@ -153,6 +154,7 @@ public class StringHttpMessageConverter extends AbstractHttpMessageConverter<Str
 				return StandardCharsets.UTF_8;
 			}
 		}
+		// 修改我们的默认属性，就可以解决中文乱码问题
 		Charset charset = getDefaultCharset();
 		Assert.state(charset != null, "No default charset");
 		return charset;

@@ -42,6 +42,9 @@ import org.springframework.web.util.pattern.PathPattern;
 import org.springframework.web.util.pattern.PathPatternParser;
 
 /**
+ * 这个bean会在Spring mvc初始化的时候handlerMapping的时候进行初始化，
+ * 因为上层父类继承了InitializingBean，所以会在bean属性赋值之后调用afterPropertiesSet方法
+ *
  * {@code HandlerMapping} implementation that supports {@link RouterFunction RouterFunctions}.
  *
  * <p>If no {@link RouterFunction} is provided at

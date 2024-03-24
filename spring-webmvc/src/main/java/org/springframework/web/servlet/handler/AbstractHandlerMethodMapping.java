@@ -220,8 +220,10 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	 * @see #handlerMethodsInitialized
 	 */
 	protected void initHandlerMethods() {
+		// 拿到所有的bean对象
 		for (String beanName : getCandidateBeanNames()) {
 			if (!beanName.startsWith(SCOPED_TARGET_NAME_PREFIX)) {
+				// 处理这个bean是否是我们需要的，也就是解析@RequestMapping或者RouterFunctionMapping
 				processCandidateBean(beanName);
 			}
 		}
@@ -262,7 +264,9 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 				logger.trace("Could not resolve type for bean '" + beanName + "'", ex);
 			}
 		}
+		// 拿到对应的class，isHandler来判断是否是我们需要的对象，子类实现
 		if (beanType != null && isHandler(beanType)) {
+			// 如果是则处理这个类下面的方法
 			detectHandlerMethods(beanName);
 		}
 	}
@@ -278,9 +282,12 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 
 		if (handlerType != null) {
 			Class<?> userType = ClassUtils.getUserClass(handlerType);
+			// 拿到所有包含了注释或者匹配的方法
+			// 需要注意这个map的key是我们的method，value是我们的Info路径信息
 			Map<Method, T> methods = MethodIntrospector.selectMethods(userType,
 					(MethodIntrospector.MetadataLookup<T>) method -> {
 						try {
+							// 如果符合条件解析注解数据
 							return getMappingForMethod(method, userType);
 						}
 						catch (Throwable ex) {
@@ -295,7 +302,9 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 				mappingsLogger.debug(formatMappings(userType, methods));
 			}
 			methods.forEach((method, mapping) -> {
+				// 循环符合条件的方法
 				Method invocableMethod = AopUtils.selectInvocableMethod(method, userType);
+				// 进行注册
 				registerHandlerMethod(handler, invocableMethod, mapping);
 			});
 		}
@@ -572,8 +581,15 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 	 */
 	class MappingRegistry {
 
+		/**
+		 * 存放mapping和我们具体方法的对应关系，需要和下面的pathLookup搭配使用
+		 */
 		private final Map<T, MappingRegistration<T>> registry = new HashMap<>();
 
+		/**
+		 * 存放路径和mapping的map,先用path找到对应的mapping需要和上面的registry搭配使用
+		 * 需要注意的是value可能是一个list，因为我们的path是可以重复的，可以是get或者post
+		 */
 		private final MultiValueMap<String, T> pathLookup = new LinkedMultiValueMap<>();
 
 		private final Map<String, List<HandlerMethod>> nameLookup = new ConcurrentHashMap<>();
@@ -637,6 +653,7 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 
 				Set<String> directPaths = AbstractHandlerMethodMapping.this.getDirectPaths(mapping);
 				for (String path : directPaths) {
+					// 把path和mapping放入pathLookup这个map中，key是path，value是mapping
 					this.pathLookup.add(path, mapping);
 				}
 
@@ -653,6 +670,8 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 					this.corsLookup.put(handlerMethod, corsConfig);
 				}
 
+				// 这里是注册的map，把mapping当作key, value是方法信息
+				// 如果如果路径匹配需要用到两个map，先用path找到上面pathLookup的mapping，然后再用mapping来这个map找到对应的方法信息，进行调用
 				this.registry.put(mapping,
 						new MappingRegistration<>(mapping, handlerMethod, directPaths, name, corsConfig != null));
 			}

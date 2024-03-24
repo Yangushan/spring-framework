@@ -143,10 +143,12 @@ public class InvocableHandlerMethod extends HandlerMethod {
 	public Object invokeForRequest(NativeWebRequest request, @Nullable ModelAndViewContainer mavContainer,
 			Object... providedArgs) throws Exception {
 
+		//*获取我们目标方法入参的值
 		Object[] args = getMethodArgumentValues(request, mavContainer, providedArgs);
 		if (logger.isTraceEnabled()) {
 			logger.trace("Arguments: " + Arrays.toString(args));
 		}
+		//真的的调用我们的目标方法
 		return doInvoke(args);
 	}
 
@@ -159,11 +161,13 @@ public class InvocableHandlerMethod extends HandlerMethod {
 	protected Object[] getMethodArgumentValues(NativeWebRequest request, @Nullable ModelAndViewContainer mavContainer,
 			Object... providedArgs) throws Exception {
 
+		// 获取目标方法参数的描述数组对象
 		MethodParameter[] parameters = getMethodParameters();
 		if (ObjectUtils.isEmpty(parameters)) {
 			return EMPTY_ARGS;
 		}
 
+		//用来初始化我们对应参数名称的参数值得数组
 		Object[] args = new Object[parameters.length];
 		for (int i = 0; i < parameters.length; i++) {
 			MethodParameter parameter = parameters[i];
@@ -172,10 +176,12 @@ public class InvocableHandlerMethod extends HandlerMethod {
 			if (args[i] != null) {
 				continue;
 			}
+			// * 获取所有的参数解析器，然后筛选出合适的解析器
 			if (!this.resolvers.supportsParameter(parameter)) {
 				throw new IllegalStateException(formatArgumentError(parameter, "No suitable resolver"));
 			}
 			try {
+				// 通过上面筛选的 参数解析器来解析我们的参数
 				args[i] = this.resolvers.resolveArgument(parameter, mavContainer, request, this.dataBinderFactory);
 			}
 			catch (Exception ex) {

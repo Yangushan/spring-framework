@@ -140,6 +140,7 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 	}
 
 	/**
+	 * tomcat在实例化servlet的时候，会调用Init方法
 	 * Map config parameters onto bean properties of this servlet, and
 	 * invoke subclass initialization.
 	 * @throws ServletException if bean properties are invalid (or required
@@ -149,6 +150,7 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 	public final void init() throws ServletException {
 
 		// Set bean properties from init parameters.
+		// 拿到初始化属性配置
 		PropertyValues pvs = new ServletConfigPropertyValues(getServletConfig(), this.requiredProperties);
 		if (!pvs.isEmpty()) {
 			try {
@@ -167,6 +169,7 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 		}
 
 		// Let subclasses do whatever initialization they like.
+		// 构建我们的spring mvc容器
 		initServletBean();
 	}
 

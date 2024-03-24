@@ -568,15 +568,17 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	public void afterPropertiesSet() {
 		// Do this first, it may add ResponseBody advice beans
 		initControllerAdviceCache();
-
+		// 参数解析器
 		if (this.argumentResolvers == null) {
 			List<HandlerMethodArgumentResolver> resolvers = getDefaultArgumentResolvers();
 			this.argumentResolvers = new HandlerMethodArgumentResolverComposite().addResolvers(resolvers);
 		}
+		// 数据绑定参数解析器
 		if (this.initBinderArgumentResolvers == null) {
 			List<HandlerMethodArgumentResolver> resolvers = getDefaultInitBinderArgumentResolvers();
 			this.initBinderArgumentResolvers = new HandlerMethodArgumentResolverComposite().addResolvers(resolvers);
 		}
+		// 返回值处理器handler
 		if (this.returnValueHandlers == null) {
 			List<HandlerMethodReturnValueHandler> handlers = getDefaultReturnValueHandlers();
 			this.returnValueHandlers = new HandlerMethodReturnValueHandlerComposite().addHandlers(handlers);
@@ -684,6 +686,7 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		// Catch-all
 		resolvers.add(new PrincipalMethodArgumentResolver());
 		resolvers.add(new RequestParamMethodArgumentResolver(getBeanFactory(), true));
+		// 这个是兜底的，加入我们的方法上没写注解，接收的是一个自定义的对象，那么会用这个来兜底
 		resolvers.add(new ServletModelAttributeMethodProcessor(true));
 
 		return resolvers;
@@ -783,6 +786,15 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		return true;
 	}
 
+	/**
+	 * requestMapping方法调用的地方
+	 * @param request current HTTP request
+	 * @param response current HTTP response
+	 * @param handlerMethod handler method to use. This object must have previously been passed to the
+	 * {@link #supportsInternal(HandlerMethod)} this interface, which must have returned {@code true}.
+	 * @return
+	 * @throws Exception
+	 */
 	@Override
 	protected ModelAndView handleInternal(HttpServletRequest request,
 			HttpServletResponse response, HandlerMethod handlerMethod) throws Exception {
@@ -844,6 +856,7 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	}
 
 	/**
+	 * 调用我们requestMethod的方法，核心拿到modelAndView对象，解析参数
 	 * Invoke the {@link RequestMapping} handler method preparing a {@link ModelAndView}
 	 * if view resolution is required.
 	 * @since 4.2
@@ -853,6 +866,12 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 	protected ModelAndView invokeHandlerMethod(HttpServletRequest request,
 			HttpServletResponse response, HandlerMethod handlerMethod) throws Exception {
 
+		// 获取当前的AsyncWebRequest，这里AsyncWebRequest的主要作用是用于判断目标
+		// handler的返回值是否为WebAsyncTask或DeferredResult，如果是这两种中的一种，
+		// 则说明当前请求的处理应该是异步的。所谓的异步，指的是当前请求会将Controller中
+		// 封装的业务逻辑放到一个线程池中进行调用，待该调用有返回结果之后再返回到response中。
+		// 这种处理的优点在于用于请求分发的线程能够解放出来，从而处理更多的请求,提高吞吐。
+		// 只有待目标任务完成之后才会回来将该异步任务的结果返回。
 		WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);
 		AsyncWebRequest asyncWebRequest = WebAsyncUtils.createAsyncWebRequest(request, response);
 		asyncWebRequest.setTimeout(this.asyncRequestTimeout);
@@ -865,28 +884,41 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 		// Obtain wrapped response to enforce lifecycle rule from Servlet spec, section 2.3.3.4
 		response = asyncWebRequest.getNativeResponse(HttpServletResponse.class);
 
+
+		// 把我们的请求req resp包装成 ServletWebRequest
 		ServletWebRequest webRequest = (asyncWebRequest instanceof ServletWebRequest ?
 				(ServletWebRequest) asyncWebRequest : new ServletWebRequest(request, response));
 
 		try {
+			// 获取容器中全局配置的InitBinder和当前HandlerMethod所对应的Controller中
+			// 配置的InitBinder，用于进行参数的绑定
 			WebDataBinderFactory binderFactory = getDataBinderFactory(handlerMethod);
+
+			// 获取容器中全局配置的ModelAttribute和当前HandlerMethod所对应的Controller 中配置的ModelAttribute，
+			// 这些配置的方法将会在目标方法调用之前进行调用
 			ModelFactory modelFactory = getModelFactory(handlerMethod, binderFactory);
 
 			ServletInvocableHandlerMethod invocableMethod = createInvocableHandlerMethod(handlerMethod);
 			if (this.argumentResolvers != null) {
+				// 让invocableMethod拥有参数解析能力
 				invocableMethod.setHandlerMethodArgumentResolvers(this.argumentResolvers);
 			}
 			if (this.returnValueHandlers != null) {
+				// 让invocableMethod拥有返回值处理能力
 				invocableMethod.setHandlerMethodReturnValueHandlers(this.returnValueHandlers);
 			}
 			invocableMethod.setDataBinderFactory(binderFactory);
+			// 设置ParameterNameDiscoverer，该对象将按照一定的规则获取当前参数的名称
 			invocableMethod.setParameterNameDiscoverer(this.parameterNameDiscoverer);
-
+			// ModelAndView处理容器
 			ModelAndViewContainer mavContainer = new ModelAndViewContainer();
+			// 将request的Attribute复制一份到ModelMap
 			mavContainer.addAllAttributes(RequestContextUtils.getInputFlashMap(request));
+			// *调用我们标注了@ModelAttribute的方法,主要是为我们的目标方法预加载
 			modelFactory.initModel(webRequest, mavContainer, invocableMethod);
 			mavContainer.setIgnoreDefaultModelOnRedirect(this.ignoreDefaultModelOnRedirect);
 
+			// 这里就是用于判断当前请求是否有异步任务结果的，如果存在，则对异步任务结果进行封装
 			if (asyncManager.hasConcurrentResult()) {
 				Object result = asyncManager.getConcurrentResult();
 				Object[] resultContext = asyncManager.getConcurrentResultContext();
@@ -900,11 +932,13 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 				invocableMethod = invocableMethod.wrapConcurrentResult(result);
 			}
 
+			// *对请求参数进行处理，调用目标HandlerMethod，并且将返回值封装为一个ModelAndView对象
 			invocableMethod.invokeAndHandle(webRequest, mavContainer);
 			if (asyncManager.isConcurrentHandlingStarted()) {
 				return null;
 			}
-
+			// 对封装的ModelAndView进行处理，主要是判断当前请求是否进行了重定向，如果进行了重定向，
+			// 还会判断是否需要将FlashAttributes封装到新的请求中
 			return getModelAndView(mavContainer, modelFactory, webRequest);
 		}
 		finally {
@@ -1010,6 +1044,7 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 			ModelFactory modelFactory, NativeWebRequest webRequest) throws Exception {
 
 		modelFactory.updateModel(webRequest, mavContainer);
+		// 如果已经被@ResponseBody解析了就不需要处理视图
 		if (mavContainer.isRequestHandled()) {
 			return null;
 		}

@@ -247,6 +247,7 @@ public abstract class BeanUtils {
 		}
 
 		Constructor<?>[] ctors = clazz.getConstructors();
+		// 如果构造方法只有一个返回这个方法
 		if (ctors.length == 1) {
 			// A single public constructor
 			return (Constructor<T>) ctors[0];
@@ -262,6 +263,7 @@ public abstract class BeanUtils {
 
 		// Several constructors -> let's try to take the default constructor
 		try {
+			// 拿到合适的构造器，会和参数的类型做比较
 			return clazz.getDeclaredConstructor();
 		}
 		catch (NoSuchMethodException ex) {

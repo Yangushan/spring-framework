@@ -114,6 +114,7 @@ import org.springframework.util.ReflectionUtils;
 public class SpringServletContainerInitializer implements ServletContainerInitializer {
 
 	/**
+	 * tomcat会找到项目中所有实现类WebApplicationInitializer接口的类，然后传入到这个set集合
 	 * Delegate the {@code ServletContext} to any {@link WebApplicationInitializer}
 	 * implementations present on the application classpath.
 	 * <p>Because this class declares @{@code HandlesTypes(WebApplicationInitializer.class)},
@@ -147,6 +148,7 @@ public class SpringServletContainerInitializer implements ServletContainerInitia
 
 		if (webAppInitializerClasses != null) {
 			initializers = new ArrayList<>(webAppInitializerClasses.size());
+			// 拿到所有实现类WebApplicationInitializer的类，然后创建实例
 			for (Class<?> waiClass : webAppInitializerClasses) {
 				// Be defensive: Some servlet containers provide us with invalid classes,
 				// no matter what @HandlesTypes says...
@@ -170,6 +172,7 @@ public class SpringServletContainerInitializer implements ServletContainerInitia
 
 		servletContext.log(initializers.size() + " Spring WebApplicationInitializers detected on classpath");
 		AnnotationAwareOrderComparator.sort(initializers);
+		// 排序之后循环调用onStartup方法
 		for (WebApplicationInitializer initializer : initializers) {
 			initializer.onStartup(servletContext);
 		}

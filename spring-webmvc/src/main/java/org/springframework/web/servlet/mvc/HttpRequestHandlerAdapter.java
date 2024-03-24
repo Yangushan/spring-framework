@@ -41,6 +41,7 @@ public class HttpRequestHandlerAdapter implements HandlerAdapter {
 
 	@Override
 	public boolean supports(Object handler) {
+		// 是否实现了HttpRequestHandler接口
 		return (handler instanceof HttpRequestHandler);
 	}
 

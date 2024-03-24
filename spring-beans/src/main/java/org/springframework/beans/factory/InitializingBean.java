@@ -34,6 +34,7 @@ package org.springframework.beans.factory;
 public interface InitializingBean {
 
 	/**
+	 * 初始化的时候会调用的一个方法，也就是在我们属性填充之后调用
 	 * Invoked by the containing {@code BeanFactory} after it has set all bean properties
 	 * and satisfied {@link BeanFactoryAware}, {@code ApplicationContextAware} etc.
 	 * <p>This method allows the bean instance to perform validation of its overall

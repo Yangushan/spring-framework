@@ -125,6 +125,7 @@ public class RequestParamMethodArgumentResolver extends AbstractNamedValueMethod
 	 */
 	@Override
 	public boolean supportsParameter(MethodParameter parameter) {
+		// 判断我们是否有@RequestParam注解
 		if (parameter.hasParameterAnnotation(RequestParam.class)) {
 			if (Map.class.isAssignableFrom(parameter.nestedIfOptional().getNestedParameterType())) {
 				RequestParam requestParam = parameter.getParameterAnnotation(RequestParam.class);
@@ -142,7 +143,9 @@ public class RequestParamMethodArgumentResolver extends AbstractNamedValueMethod
 			if (MultipartResolutionDelegate.isMultipartArgument(parameter)) {
 				return true;
 			}
+			// 如果没有写@RequestParam，则判断当前字段类型是不是简单的类型
 			else if (this.useDefaultResolution) {
+				// 比如string , integer等等
 				return BeanUtils.isSimpleProperty(parameter.getNestedParameterType());
 			}
 			else {
@@ -170,6 +173,7 @@ public class RequestParamMethodArgumentResolver extends AbstractNamedValueMethod
 		}
 
 		Object arg = null;
+		// 流媒体类型
 		MultipartRequest multipartRequest = request.getNativeRequest(MultipartRequest.class);
 		if (multipartRequest != null) {
 			List<MultipartFile> files = multipartRequest.getFiles(name);

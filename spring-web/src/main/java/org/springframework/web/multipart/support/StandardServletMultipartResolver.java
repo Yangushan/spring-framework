@@ -28,6 +28,7 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.multipart.MultipartResolver;
 
 /**
+ * 多媒体请求解析器
  * Standard implementation of the {@link MultipartResolver} interface,
  * based on the Servlet 3.0 {@link javax.servlet.http.Part} API.
  * To be added as "multipartResolver" bean to a Spring DispatcherServlet context,
@@ -113,6 +114,7 @@ public class StandardServletMultipartResolver implements MultipartResolver {
 
 	@Override
 	public boolean isMultipart(HttpServletRequest request) {
+		// 用contentType判断是否是多媒体请求
 		return StringUtils.startsWithIgnoreCase(request.getContentType(),
 				(this.strictServletCompliance ? MediaType.MULTIPART_FORM_DATA_VALUE : "multipart/"));
 	}

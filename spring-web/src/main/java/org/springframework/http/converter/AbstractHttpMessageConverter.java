@@ -44,7 +44,7 @@ import org.springframework.util.Assert;
  *
  * @author Arjen Poutsma
  * @author Juergen Hoeller
- * @author Sebastien Deleuze
+ *  @author Sebastien Deleuze
  * @since 3.0
  * @param <T> the converted object type
  */

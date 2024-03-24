@@ -95,9 +95,10 @@ public class StandardMultipartHttpServletRequest extends AbstractMultipartHttpSe
 			Collection<Part> parts = request.getParts();
 			this.multipartParameterNames = new LinkedHashSet<>(parts.size());
 			MultiValueMap<String, MultipartFile> files = new LinkedMultiValueMap<>(parts.size());
-			for (Part part : parts) {
+			for (Part part : parts) { // 解析每一个part部分
 				String headerValue = part.getHeader(HttpHeaders.CONTENT_DISPOSITION);
 				ContentDisposition disposition = ContentDisposition.parse(headerValue);
+				// 去拿文件名
 				String filename = disposition.getFilename();
 				if (filename != null) {
 					if (filename.startsWith("=?") && filename.endsWith("?=")) {
@@ -105,7 +106,7 @@ public class StandardMultipartHttpServletRequest extends AbstractMultipartHttpSe
 					}
 					files.add(part.getName(), new StandardMultipartFile(part, filename));
 				}
-				else {
+				else { // 如果不是文件名，就是普通的参数
 					this.multipartParameterNames.add(part.getName());
 				}
 			}

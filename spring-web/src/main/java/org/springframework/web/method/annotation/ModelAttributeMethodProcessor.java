@@ -130,6 +130,7 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 		Assert.state(binderFactory != null, "ModelAttributeMethodProcessor requires WebDataBinderFactory");
 
 		String name = ModelFactory.getNameForParameter(parameter);
+		// 如果有ModelAttribute注解
 		ModelAttribute ann = parameter.getParameterAnnotation(ModelAttribute.class);
 		if (ann != null) {
 			mavContainer.setBinding(name, ann.binding());
@@ -213,10 +214,13 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 	protected Object createAttribute(String attributeName, MethodParameter parameter,
 			WebDataBinderFactory binderFactory, NativeWebRequest webRequest) throws Exception {
 
+		// 拿到参数信息
 		MethodParameter nestedParameter = parameter.nestedIfOptional();
 		Class<?> clazz = nestedParameter.getNestedParameterType();
 
+		// 拿到合适的对应我们参数class的构造方法
 		Constructor<?> ctor = BeanUtils.getResolvableConstructor(clazz);
+		// 通过构造器创建我们的参数实例
 		Object attribute = constructAttribute(ctor, attributeName, parameter, binderFactory, webRequest);
 		if (parameter != nestedParameter) {
 			attribute = Optional.of(attribute);
@@ -242,12 +246,14 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 	protected Object constructAttribute(Constructor<?> ctor, String attributeName, MethodParameter parameter,
 			WebDataBinderFactory binderFactory, NativeWebRequest webRequest) throws Exception {
 
+		// 如果是无参数构造方法，直接创建
 		if (ctor.getParameterCount() == 0) {
 			// A single default constructor -> clearly a standard JavaBeans arrangement.
 			return BeanUtils.instantiateClass(ctor);
 		}
 
 		// A single data class constructor -> resolve constructor arguments from request parameters.
+		// 如果是有参数构造方法，拿到参数列表
 		String[] paramNames = BeanUtils.getParameterNames(ctor);
 		Class<?>[] paramTypes = ctor.getParameterTypes();
 		Object[] args = new Object[paramTypes.length];
@@ -257,6 +263,7 @@ public class ModelAttributeMethodProcessor implements HandlerMethodArgumentResol
 		boolean bindingFailure = false;
 		Set<String> failedParams = new HashSet<>(4);
 
+		// 拿到参数名字列表之后，去传入的参数里面拿，如果拿得到赋值到我们的对象上
 		for (int i = 0; i < paramNames.length; i++) {
 			String paramName = paramNames[i];
 			Class<?> paramType = paramTypes[i];

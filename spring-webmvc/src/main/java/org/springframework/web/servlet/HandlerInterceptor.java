@@ -23,6 +23,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.web.method.HandlerMethod;
 
 /**
+ * Handler拦截器，可以通过使用preHandler来完成一些前置的请求拦截
  * Workflow interface that allows for customized handler execution chains.
  * Applications can register any number of existing or custom interceptors
  * for certain groups of handlers, to add common preprocessing behavior
@@ -75,6 +76,7 @@ import org.springframework.web.method.HandlerMethod;
 public interface HandlerInterceptor {
 
 	/**
+	 * 请求前置处理器，可以通过返回false来拦截请求
 	 * Interception point before the execution of a handler. Called after
 	 * HandlerMapping determined an appropriate handler object, but before
 	 * HandlerAdapter invokes the handler.
@@ -101,6 +103,7 @@ public interface HandlerInterceptor {
 	}
 
 	/**
+	 * 如果preHandle返回false或者执行方法报错，这里就不会执行
 	 * Interception point after successful execution of a handler.
 	 * Called after HandlerAdapter actually invoked the handler, but before the
 	 * DispatcherServlet renders the view. Can expose additional model objects
@@ -126,6 +129,7 @@ public interface HandlerInterceptor {
 	}
 
 	/**
+	 * pre返回false不会执行，
 	 * Callback after completion of request processing, that is, after rendering
 	 * the view. Will be called on any outcome of handler execution, thus allows
 	 * for proper resource cleanup.

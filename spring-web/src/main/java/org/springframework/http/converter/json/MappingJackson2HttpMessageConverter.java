@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.lang.Nullable;
 
 /**
+ * 处理object返回值为json，默认不会再我们的Spring MessageConverter里面，需要自己导入
  * Implementation of {@link org.springframework.http.converter.HttpMessageConverter} that can read and
  * write JSON using <a href="https://github.com/FasterXML/jackson">Jackson 2.x's</a> {@link ObjectMapper}.
  *
