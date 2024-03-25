@@ -33,6 +33,7 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.ReflectionUtils;
 
 /**
+ * 这个类使用了SPI机制，tomcat启动的时候会扫到这个类
  * Servlet 3.0 {@link ServletContainerInitializer} designed to support code-based
  * configuration of the servlet container using Spring's {@link WebApplicationInitializer}
  * SPI as opposed to (or possibly in combination with) the traditional
@@ -110,7 +111,7 @@ import org.springframework.util.ReflectionUtils;
  * @see #onStartup(Set, ServletContext)
  * @see WebApplicationInitializer
  */
-@HandlesTypes(WebApplicationInitializer.class)
+@HandlesTypes(WebApplicationInitializer.class) // tomcat会解析这个注解
 public class SpringServletContainerInitializer implements ServletContainerInitializer {
 
 	/**
